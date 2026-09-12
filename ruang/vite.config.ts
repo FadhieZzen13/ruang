@@ -6,6 +6,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const upstream = env.LLM_UPSTREAM || 'https://rootsys.cloud/v1'
   const key = env.LLM_API_KEY || ''
+  // Primary provider: DeepSeek (OpenAI-compatible). Falls back to the gateway
+  // above if the key is missing or the call fails.
+  const dsUpstream = env.DEEPSEEK_UPSTREAM || 'https://api.deepseek.com'
+  const dsKey = env.DEEPSEEK_API_KEY || ''
+  // Voicebox — local TTS app (returns WAV). Proxied to dodge CORS.
+  const voicebox = env.VOICEBOX_URL || 'http://localhost:17493'
 
   return {
     plugins: [
@@ -36,6 +42,23 @@ export default defineConfig(({ mode }) => {
       // So the browser hits same-origin /llm/*, and Vite proxies it upstream
       // with the API key injected here — the key never reaches the client.
       proxy: {
+        // Local Voicebox TTS (WAV audio). No key.
+        '/voicebox': {
+          target: voicebox,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/voicebox/, ''),
+        },
+        // Primary: DeepSeek. Key injected here, never reaches the browser.
+        '/deepseek': {
+          target: dsUpstream,
+          changeOrigin: true,
+          secure: true,
+          timeout: 12000,
+          proxyTimeout: 12000,
+          rewrite: (p) => p.replace(/^\/deepseek/, ''),
+          headers: dsKey ? { Authorization: `Bearer ${dsKey}` } : {},
+        },
+        // Fallback: the existing gateway.
         '/llm': {
           target: upstream,
           changeOrigin: true,

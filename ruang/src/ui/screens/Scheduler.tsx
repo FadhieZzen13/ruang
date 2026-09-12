@@ -139,7 +139,13 @@ export function Scheduler() {
       </div>
 
       <div className="agenda-head">
-        <div className="agenda-title">{isToday ? 'Today' : DAY_LABEL[selectedKey]}</div>
+        <div>
+          <div className="agenda-title">{isToday ? 'Today' : DAY_LABEL[selectedKey]}</div>
+          <div className="agenda-date">
+            {selected.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+            {agenda.length > 0 && ` · ${agenda.length} ${agenda.length === 1 ? 'thing' : 'things'}`}
+          </div>
+        </div>
         <button className="add-btn" onClick={() => setAdding((v) => !v)}>
           {adding ? 'Close' : '+ Add'}
         </button>

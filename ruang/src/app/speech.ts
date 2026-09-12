@@ -38,7 +38,29 @@ export function startListening(opts: {
 
   let finalText = ''
 
+  // Auto-stop after a few seconds of silence, so you don't have to click stop
+  // and it can't run on forever repeating. Reset on every bit of speech.
+  const SILENCE_MS = 3000
+  let silence: ReturnType<typeof setTimeout> | null = null
+  const clearSilence = () => {
+    if (silence) clearTimeout(silence)
+    silence = null
+  }
+  const armSilence = () => {
+    clearSilence()
+    silence = setTimeout(() => {
+      try {
+        rec.stop()
+      } catch {
+        /* already stopped */
+      }
+    }, SILENCE_MS)
+  }
+
+  rec.onstart = () => armSilence()
+
   rec.onresult = (e: any) => {
+    armSilence() // heard something — restart the silence clock
     let interim = ''
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const chunk = e.results[i][0].transcript
@@ -48,17 +70,27 @@ export function startListening(opts: {
     opts.onInterim((finalText + interim).trim())
   }
 
+  let hardError = false
   rec.onerror = (e: any) => {
+    // 'aborted' / 'no-speech' are benign — the user stopped or paused. Don't
+    // shout; just let onend finalize whatever we heard.
+    if (e.error === 'aborted' || e.error === 'no-speech') return
+    clearSilence()
+    hardError = true
     const map: Record<string, string> = {
-      'not-allowed': 'Microphone blocked — allow mic access and try again.',
-      'no-speech': "Didn't catch that — try again.",
-      'audio-capture': 'No microphone found.',
+      'not-allowed': 'Microphone blocked — allow mic access in the address bar, then try again.',
+      'service-not-allowed': 'This browser blocked its speech service. Use Chrome, or just type below.',
+      'network': "Voice needs a connection (the browser's speech service is offline). Type below instead.",
+      'audio-capture': 'No microphone found. Type below instead.',
+      'language-not-supported': 'Language not supported here — type below instead.',
     }
-    opts.onError(map[e.error] || 'Speech recognition failed. Try typing it instead.')
+    opts.onError(map[e.error] || `Voice unavailable here (${e.error || 'unknown'}). Type below instead.`)
   }
 
   rec.onend = () => {
-    opts.onFinal(finalText.trim())
+    clearSilence()
+    // If we errored, onError already fired; don't also push an empty final.
+    if (!hardError) opts.onFinal(finalText.trim())
   }
 
   try {

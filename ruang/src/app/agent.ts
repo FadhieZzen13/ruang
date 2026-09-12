@@ -9,8 +9,19 @@ import { fmt } from './store'
 // conflict math stay local and deterministic.
 
 const env = import.meta.env as Record<string, string | undefined>
-const BASE = '/llm'
-const MODEL = env.VITE_LLM_MODEL || 'kimi-k2.7'
+
+// Providers are tried in order — DeepSeek first, the existing gateway as
+// fallback. Each is an OpenAI-compatible /chat/completions endpoint reached
+// through a Vite proxy (see vite.config.ts) that injects its key server-side.
+interface Provider {
+  name: string
+  base: string
+  model: string
+}
+const PROVIDERS: Provider[] = [
+  { name: 'DeepSeek', base: '/deepseek', model: env.VITE_DEEPSEEK_MODEL || 'deepseek-chat' },
+  { name: 'Kimi', base: '/llm', model: env.VITE_LLM_MODEL || 'kimi-k2.7' },
+]
 
 const VALID_DAYS: Day[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const VALID_ACTIONS = ['create', 'move', 'cancel'] as const
@@ -23,6 +34,7 @@ export interface AgentAction {
   day: Day | null
   time: number | null // minutes since midnight, null if unspecified
   targetId: string | null // which existing item to move/cancel
+  provider?: string // which model answered (for the badge)
 }
 
 // One line per existing item, so the model can reference it for move/cancel.
@@ -41,6 +53,8 @@ function systemPrompt(schedule: ScheduleLite[]): string {
   const list = schedule.length
     ? schedule.map((a) => `- id ${a.id}: "${a.title}" on ${DAY_LABEL[a.day]} at ${fmt(a.start)}`).join('\n')
     : '(the week is empty)'
+  const now = new Date()
+  const today = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   return `You are the scheduling agent inside a student calendar app.
 The user speaks a memo. Decide ONE action against their week and reply with ONLY a JSON object:
 {"action":"create"|"move"|"cancel","title":string,"day":"mon".."sun"|null,"time":integer minutes-since-midnight|null,"targetId":string|null}
@@ -49,31 +63,50 @@ The user speaks a memo. Decide ONE action against their week and reply with ONLY
 - "move": reschedule something that already exists. Set targetId to its id, and day/time to the new slot.
 - "cancel": remove something that already exists. Set targetId to its id.
 - title: short and clean (e.g. "Gym"). Strip filler like "remind me to".
-- time: 7pm -> 1140, 9:30am -> 570. null if none said.
+- time: 7pm -> 1140, 9:30am -> 570.
+- day: resolve ANY date reference to a weekday key. Handle weekday names, "tomorrow"/"today"/"tonight", AND calendar dates like "13 September", "Sept 30", "the 13th" — work out which weekday that date falls on relative to today.
+- IMPORTANT: only fill day/time if the user actually stated them. If the day or the time is missing or vague, set that field to null — DO NOT guess or default. The app will ask the user.
+
+Today is ${today}.
 
 The user's current week:
 ${list}`
 }
 
 export async function proposeAction(transcript: string, schedule: ScheduleLite[]): Promise<AgentAction> {
-  const res = await fetch(`${BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt(schedule) },
-        { role: 'user', content: transcript },
-      ],
-    }),
-  })
+  const messages = [
+    { role: 'system', content: systemPrompt(schedule) },
+    { role: 'user', content: transcript },
+  ]
+  let lastError: unknown
 
-  if (!res.ok) throw new Error(`agent request failed: ${res.status}`)
-  const data = await res.json()
-  const content: string = data.choices?.[0]?.message?.content ?? '{}'
-  return normalize(JSON.parse(stripFences(content)), schedule)
+  // Try each provider in order; return the first that answers cleanly. Each gets
+  // a timeout so a slow/unreachable provider fails fast and we fall to the next
+  // instead of hanging (DeepSeek's TCP connect can time out from some regions).
+  const TIMEOUT_MS = 12000
+  for (const p of PROVIDERS) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+    try {
+      const res = await fetch(`${p.base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: p.model, temperature: 0, response_format: { type: 'json_object' }, messages }),
+        signal: ctrl.signal,
+      })
+      if (!res.ok) throw new Error(`${p.name} failed: ${res.status}`)
+      const data = await res.json()
+      const content: string = data.choices?.[0]?.message?.content ?? '{}'
+      const action = normalize(JSON.parse(stripFences(content)), schedule)
+      action.provider = p.name
+      return action
+    } catch (e) {
+      lastError = e // fall through to the next provider
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  throw lastError ?? new Error('all providers failed')
 }
 
 function stripFences(s: string): string {
