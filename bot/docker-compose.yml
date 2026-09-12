@@ -4,6 +4,7 @@ services:
     container_name: ruang-bot
     restart: unless-stopped
     environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
       - OWNER_NUMBER=${OWNER_NUMBER:-}
       - WATCHED_GROUPS=${WATCHED_GROUPS:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
