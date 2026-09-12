@@ -53,6 +53,8 @@ function systemPrompt(schedule: ScheduleLite[]): string {
   const list = schedule.length
     ? schedule.map((a) => `- id ${a.id}: "${a.title}" on ${DAY_LABEL[a.day]} at ${fmt(a.start)}`).join('\n')
     : '(the week is empty)'
+  const now = new Date()
+  const today = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   return `You are the scheduling agent inside a student calendar app.
 The user speaks a memo. Decide ONE action against their week and reply with ONLY a JSON object:
 {"action":"create"|"move"|"cancel","title":string,"day":"mon".."sun"|null,"time":integer minutes-since-midnight|null,"targetId":string|null}
@@ -61,7 +63,11 @@ The user speaks a memo. Decide ONE action against their week and reply with ONLY
 - "move": reschedule something that already exists. Set targetId to its id, and day/time to the new slot.
 - "cancel": remove something that already exists. Set targetId to its id.
 - title: short and clean (e.g. "Gym"). Strip filler like "remind me to".
-- time: 7pm -> 1140, 9:30am -> 570. null if none said.
+- time: 7pm -> 1140, 9:30am -> 570.
+- day: resolve ANY date reference to a weekday key. Handle weekday names, "tomorrow"/"today"/"tonight", AND calendar dates like "13 September", "Sept 30", "the 13th" — work out which weekday that date falls on relative to today.
+- IMPORTANT: only fill day/time if the user actually stated them. If the day or the time is missing or vague, set that field to null — DO NOT guess or default. The app will ask the user.
+
+Today is ${today}.
 
 The user's current week:
 ${list}`
