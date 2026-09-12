@@ -6,6 +6,8 @@ import type { Activity, Day } from '../domain/types'
 
 const env = import.meta.env as Record<string, string | undefined>
 const BOT_URL = (env.VITE_BOT_URL || 'http://localhost:8788').replace(/\/$/, '')
+const BOT_TOKEN = env.VITE_BOT_TOKEN || ''
+const AUTH_HEADERS = BOT_TOKEN ? { Authorization: `Bearer ${BOT_TOKEN}` } : {}
 
 export interface PendingInvite {
   id: string
@@ -25,7 +27,7 @@ export async function syncSchedule(activities: Activity[]): Promise<void> {
   try {
     await fetch(`${BOT_URL}/schedule`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
       body: JSON.stringify({
         activities: activities.map((a) => ({ title: a.title, day: a.day, start: a.start, end: a.end })),
       }),
@@ -38,7 +40,7 @@ export async function syncSchedule(activities: Activity[]): Promise<void> {
 // null = bot unreachable (offline); [] = up but nothing waiting.
 export async function getPending(): Promise<PendingInvite[] | null> {
   try {
-    const res = await fetch(`${BOT_URL}/pending`)
+    const res = await fetch(`${BOT_URL}/pending`, { headers: AUTH_HEADERS })
     if (!res.ok) return null
     const data = await res.json()
     return (data.pending ?? []) as PendingInvite[]
@@ -51,7 +53,7 @@ export async function decide(id: string, decision: Decision, message?: string): 
   try {
     const res = await fetch(`${BOT_URL}/decide`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
       body: JSON.stringify(message !== undefined ? { id, decision, message } : { id, decision }),
     })
     const data = await res.json()

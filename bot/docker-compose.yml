@@ -8,7 +8,8 @@ services:
       - WATCHED_GROUPS=${WATCHED_GROUPS:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LISTEN_TO_SELF=${LISTEN_TO_SELF:-false}
-      - BOT_PORT=8788
+      - BOT_PORT=8791
+      - BOT_AUTH_TOKEN=${BOT_AUTH_TOKEN:-}
       - DATA_DIR=/app/data
     volumes:
       - ./auth:/app/auth
@@ -16,4 +17,4 @@ services:
     # auth/ (WhatsApp session) and data/ (real week) are persisted on the host
     # so they survive rebuilds and restarts.
     ports:
-      - "127.0.0.1:8788:8788"
+      - "127.0.0.1:8791:8791"

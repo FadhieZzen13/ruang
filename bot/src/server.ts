@@ -6,16 +6,19 @@ import { logger } from './logger.js'
 import type { ScheduleItem } from './types.js'
 
 const PORT = Number(process.env.BOT_PORT || 8788)
+const AUTH_TOKEN = process.env.BOT_AUTH_TOKEN || ''
 
 // Tiny local API so the Ruang app can: push your real schedule, read the
-// invites waiting on you, and approve them in-app. Localhost only; CORS open
-// so the Vite dev app (5173) can reach it. Approving here goes through the
-// exact same gated postVerdict as the terminal — RULE 2 is unchanged.
+// invites waiting on you, and approve them in-app. Approving here goes through
+// the exact same gated postVerdict as the terminal — RULE 2 is unchanged.
+// If BOT_AUTH_TOKEN is set, every non-health call must send it as
+// `Authorization: Bearer <token>` (or `x-bot-token`), so the API can be
+// published behind Cloudflare without exposing your approvals. Empty = open.
 export function startServer(send: Sender): void {
   const server = createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-bot-token')
     res.setHeader('Content-Type', 'application/json')
 
     if (req.method === 'OPTIONS') return end(res, 204, {})
@@ -23,8 +26,13 @@ export function startServer(send: Sender): void {
     const url = req.url || '/'
     try {
       if (req.method === 'GET' && url === '/health') {
-        return end(res, 200, { ok: true, watching: WATCHED_GROUPS.length, schedule: getSchedule().length })
+        return end(res, 200, { ok: true, watching: WATCHED_GROUPS.length, schedule: getSchedule().length, auth: Boolean(AUTH_TOKEN) })
       }
+
+      if (AUTH_TOKEN && !authorized(req)) {
+        return end(res, 401, { ok: false, error: 'unauthorized' })
+      }
+
       if (req.method === 'GET' && url === '/pending') {
         return end(res, 200, { pending: listPending() })
       }
@@ -56,9 +64,18 @@ export function startServer(send: Sender): void {
     }
   })
 
-  server.listen(PORT, '127.0.0.1', () => {
-    logger.info(`API on http://127.0.0.1:${PORT} (schedule sync + in-app approvals)`)
+  // Bind 0.0.0.0 INSIDE the container so Docker's port mapping can reach it;
+  // the compose file still maps it to 127.0.0.1 on the host.
+  server.listen(PORT, '0.0.0.0', () => {
+    logger.info(`API on http://0.0.0.0:${PORT} (schedule sync + in-app approvals)`)
   })
+}
+
+function authorized(req: import('node:http').IncomingMessage): boolean {
+  const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, '')
+  const header = req.headers['x-bot-token']
+  const token = bearer || header
+  return typeof token === 'string' && token === AUTH_TOKEN
 }
 
 function end(res: import('node:http').ServerResponse, code: number, body: unknown): void {
