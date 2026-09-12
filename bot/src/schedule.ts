@@ -9,14 +9,15 @@ import { DAY_LABEL, DAY_ORDER } from './types.js'
 // be replaced live by the Ruang app pushing its schedule to the bot's API.
 
 const here = dirname(fileURLToPath(import.meta.url))
-const LOCAL = join(here, '..', 'schedule.local.json')
+const DATA_DIR = process.env.DATA_DIR || join(here, '..')
+const LOCAL = join(DATA_DIR, 'schedule.local.json')
 const EVENING = 17 * 60 // 5pm+ reads as "evening"
 const COUNTER_HOUR = 19 * 60 // counter-offers target a clean 7pm
 
 function load(): ScheduleItem[] {
   for (const name of ['schedule.local.json', 'schedule.json']) {
     try {
-      return JSON.parse(readFileSync(join(here, '..', name), 'utf8')) as ScheduleItem[]
+      return JSON.parse(readFileSync(join(DATA_DIR, name), 'utf8')) as ScheduleItem[]
     } catch {
       // try the next one
     }
