@@ -208,11 +208,14 @@ input {
 
 /* ---- Month calendar ---- */
 .cal {
-  background: var(--card);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(196, 105, 74, 0.05), transparent 60%),
+    var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  padding: 14px 12px 10px;
-  margin-bottom: 18px;
+  padding: 16px 14px 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 8px 24px rgba(31, 27, 24, 0.06);
 }
 .cal-head {
   display: flex;
@@ -278,11 +281,13 @@ input {
 .cal-cell.today {
   font-weight: 700;
   color: var(--accent);
+  background: var(--accent-soft);
 }
 .cal-cell.selected {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
+  box-shadow: 0 4px 12px rgba(196, 105, 74, 0.35);
 }
 .cal-cell.selected.today {
   color: #fff;
@@ -328,9 +333,16 @@ input {
   margin: 2px 4px 12px;
 }
 .agenda-title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+}
+.agenda-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  margin-top: 2px;
+  letter-spacing: 0.01em;
 }
 .add-btn {
   font-size: 13px;
@@ -439,6 +451,24 @@ input {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  box-shadow: 0 1px 2px rgba(31, 27, 24, 0.04);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  animation: chip-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.chip:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 14px rgba(31, 27, 24, 0.08);
+}
+/* Staggered reveal as a day's agenda paints in. */
+.day-col .chip:nth-child(1) { animation-delay: 0.02s; }
+.day-col .chip:nth-child(2) { animation-delay: 0.07s; }
+.day-col .chip:nth-child(3) { animation-delay: 0.12s; }
+.day-col .chip:nth-child(4) { animation-delay: 0.17s; }
+.day-col .chip:nth-child(5) { animation-delay: 0.22s; }
+.day-col .chip:nth-child(n + 6) { animation-delay: 0.27s; }
+@keyframes chip-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .chip-body {
   min-width: 0;
@@ -722,6 +752,7 @@ input {
   flex-direction: column;
   min-height: 100%;
   padding-top: 12px;
+  position: relative;
 }
 .voice-hero {
   flex: 1;
@@ -821,6 +852,7 @@ input {
   flex-direction: column;
   min-height: 100%;
   padding: 20px 4px 8px;
+  position: relative;
 }
 .answer-quote {
   font-size: 14px;
@@ -1001,6 +1033,76 @@ input {
 }
 .neg-option.skip .neg-title {
   color: var(--ink-2);
+}
+
+/* Conversational clarify screen */
+.clarify {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  padding: 40px 8px;
+  gap: 20px;
+  position: relative;
+}
+.clarify-q {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--ink);
+  max-width: 300px;
+}
+.record-btn.small {
+  width: 72px;
+  height: 72px;
+  margin: 4px auto;
+}
+.clarify .type-row {
+  max-width: 320px;
+}
+
+/* Voice on/off toggle — matches the app's stroke-icon language */
+.mute-btn {
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--card);
+  transition: transform 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  z-index: 2;
+}
+.mute-btn.on {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+}
+.mute-btn.off {
+  color: var(--ink-3);
+}
+.mute-btn:active {
+  transform: scale(0.92);
+}
+
+/* "Something else" custom option */
+.neg-option.custom {
+  border-style: dashed;
+  border-color: var(--accent);
+  background: transparent;
+}
+.neg-option.custom:first-child {
+  background: transparent;
+}
+.neg-option.custom .neg-title {
+  color: var(--accent);
 }
 
 /* ---- Tab bar ---- */
