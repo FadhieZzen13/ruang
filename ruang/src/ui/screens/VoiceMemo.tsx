@@ -18,6 +18,7 @@ const DURATION = 60
 interface Plan {
   action: ActionKind
   source: 'agent' | 'offline'
+  provider?: string // which model answered
   title: string
   day: Day
   start: number
@@ -86,12 +87,13 @@ export function VoiceMemo() {
   }
 
   function planFromAction(
-    a: { action: ActionKind; title: string; day: Day | null; time: number | null; targetId: string | null },
+    a: { action: ActionKind; title: string; day: Day | null; time: number | null; targetId: string | null; provider?: string },
     source: 'agent' | 'offline',
   ): Plan {
     const base = {
       targetId: null as string | null, fromLabel: null as string | null,
       description: '', recurrence: 'once' as Recurrence, negotiation: null as Negotiation | null,
+      provider: a.provider,
     }
     const target = a.targetId ? getActivities().find((x) => x.id === a.targetId) : undefined
 
@@ -270,6 +272,9 @@ function Answer({
     <div className="answer">
       {transcript && <div className="answer-quote">“{transcript}”</div>}
       <div className="answer-verdict">{verdict(plan)}</div>
+      <div className="answer-source">
+        {plan.source === 'agent' ? `via ${plan.provider ?? 'agent'}` : 'offline parser'}
+      </div>
 
       {/* move / cancel — explicit, single confirm */}
       {!isCreate && (

@@ -9,8 +9,19 @@ import { fmt } from './store'
 // conflict math stay local and deterministic.
 
 const env = import.meta.env as Record<string, string | undefined>
-const BASE = '/llm'
-const MODEL = env.VITE_LLM_MODEL || 'kimi-k2.7'
+
+// Providers are tried in order — DeepSeek first, the existing gateway as
+// fallback. Each is an OpenAI-compatible /chat/completions endpoint reached
+// through a Vite proxy (see vite.config.ts) that injects its key server-side.
+interface Provider {
+  name: string
+  base: string
+  model: string
+}
+const PROVIDERS: Provider[] = [
+  { name: 'DeepSeek', base: '/deepseek', model: env.VITE_DEEPSEEK_MODEL || 'deepseek-chat' },
+  { name: 'Kimi', base: '/llm', model: env.VITE_LLM_MODEL || 'kimi-k2.7' },
+]
 
 const VALID_DAYS: Day[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const VALID_ACTIONS = ['create', 'move', 'cancel'] as const
@@ -23,6 +34,7 @@ export interface AgentAction {
   day: Day | null
   time: number | null // minutes since midnight, null if unspecified
   targetId: string | null // which existing item to move/cancel
+  provider?: string // which model answered (for the badge)
 }
 
 // One line per existing item, so the model can reference it for move/cancel.
@@ -56,24 +68,39 @@ ${list}`
 }
 
 export async function proposeAction(transcript: string, schedule: ScheduleLite[]): Promise<AgentAction> {
-  const res = await fetch(`${BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt(schedule) },
-        { role: 'user', content: transcript },
-      ],
-    }),
-  })
+  const messages = [
+    { role: 'system', content: systemPrompt(schedule) },
+    { role: 'user', content: transcript },
+  ]
+  let lastError: unknown
 
-  if (!res.ok) throw new Error(`agent request failed: ${res.status}`)
-  const data = await res.json()
-  const content: string = data.choices?.[0]?.message?.content ?? '{}'
-  return normalize(JSON.parse(stripFences(content)), schedule)
+  // Try each provider in order; return the first that answers cleanly. Each gets
+  // a timeout so a slow/unreachable provider fails fast and we fall to the next
+  // instead of hanging (DeepSeek's TCP connect can time out from some regions).
+  const TIMEOUT_MS = 12000
+  for (const p of PROVIDERS) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+    try {
+      const res = await fetch(`${p.base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: p.model, temperature: 0, response_format: { type: 'json_object' }, messages }),
+        signal: ctrl.signal,
+      })
+      if (!res.ok) throw new Error(`${p.name} failed: ${res.status}`)
+      const data = await res.json()
+      const content: string = data.choices?.[0]?.message?.content ?? '{}'
+      const action = normalize(JSON.parse(stripFences(content)), schedule)
+      action.provider = p.name
+      return action
+    } catch (e) {
+      lastError = e // fall through to the next provider
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  throw lastError ?? new Error('all providers failed')
 }
 
 function stripFences(s: string): string {
