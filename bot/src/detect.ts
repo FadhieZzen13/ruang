@@ -6,29 +6,53 @@ import type { Day } from './types.js'
 // ponytail: duplicated with the app on purpose — the bot is a separate service.
 
 const DAY_PATTERNS: [Day, RegExp][] = [
-  ['mon', /monday|\bmon\b/i],
-  ['tue', /tuesday|\btues\b|\btue\b/i],
-  ['wed', /wednesday|\bwed\b/i],
-  ['thu', /thursday|\bthurs\b|\bthu\b/i],
-  ['fri', /friday|\bfri\b/i],
-  ['sat', /saturday|\bsat\b/i],
-  ['sun', /sunday|\bsun\b/i],
+  ['mon', /monday|\bmon\b|\bsenin\b|\bsenen\b|\bsen\b/i],
+  ['tue', /tuesday|\btues\b|\btue\b|\bselasa\b|\bsel\b/i],
+  ['wed', /wednesday|\bwed\b|\brabu\b|\brebo\b|\brbu\b/i],
+  ['thu', /thursday|\bthurs\b|\bthu\b|\bkamis\b|\bkemis\b|\bkm\b/i],
+  ['fri', /friday|\bfri\b|\bjumat\b|\bjum'at\b|\bjum\b|\bjumhat\b/i],
+  ['sat', /saturday|\bsat\b|\bsabtu\b|\bsaptu\b|\bsab\b/i],
+  ['sun', /sunday|\bsun\b|\bminggu\b|\bahad\b|\bakad\b|\bming\b/i],
 ]
 
-// Activity-type words. The listener watches for these; anything else in a group
-// message is ignored. Add words that mean "let's do something" — the more casual
-// ones (dinner, coffee, date) matter most because students don't say "meeting".
-// Mix of English + Indonesian slang, since that's how students actually invite.
+// Intent words that mean "let's do something together". The listener watches for
+// these. Casual food/hangout words matter most because students rarely say the
+// word "meeting". Broadly multilingual (EN + ID/MY) to catch how students actually
+// invite each other.
 const INTENT_WORDS =
-  /\b(meet|meeting|meet-?up|hang|hangout|catch ?up|kopo|gotcha|gather|study|discuss|sync|standup|call|zoom|futsal|sports?|badminton|gym|workout|work ?out|run|jog|rehearsal|rehearse|practice|training|match|scrim|dinner|lunch|breakfast|brunch|supper|coffee|kopi|ngopi|tea|boba|cimol|date|ngedate|movie|film|cinema|nonton|nobar|watch|game|gaming|mabar|ranked|main|board ?game|karaoke|picnic|trip|jalan|jalan-?jalan|hike|hiking|swim|renang|yoga|zumba|basketball|basket|volley|tennis|bowling|billiard|fotbar|makan|makan-?makan|bukber|sahur|nongkrong|ngumpul|kumpul|jemput|antar|shopping|belanja|mall|cafe|warteg|rapat|diskusi|belajar|les|ngerjain|tugas|project|presentation|presentasi|kerja ?kelompok|party|pesta|ultah|birthday|wedding|nikahan|reunion|reuni|concert|konser|gig)\b/i
+  /\b(meet|meeting|meet-?up|hang|hangout|hang ?out|catch ?up|kopo|gotcha|gather|gathering|study|studying|discuss|discussion|sync|syncing|standup|call|zoom|gmeet|g-?meet|vc|voice ?call|futsal|sports?|badminton|gym|workout|work ?out|nge-?gym|run|jog|jogging|lari|rehearsal|rehearse|practice|training|latihan|match|scrim|sparring|tanding|dinner|lunch|breakfast|brunch|supper|makan malam|makan siang|sarapan|coffee|kopi|ngopi|ngopdul|tea|boba|boba ?time|cimol|date|ngedate|nge-?date|movie|film|cinema|bioskop|nonton|nobar|watch|watching|game|gaming|mabar|ranked|main|board ?game|karaoke|nge-?korek|picnic|trip|jalan|jalan-?jalan|hang ?out|hike|hiking|naik gunung|swim|swimming|renang|nge-?renang|yoga|zumba|basketball|basket|volley|voli|tennis|bowling|billiard|biliar|fotbar|foto ?bareng|makan|makan-?makan|mam|ngemil|bukber|buka ?bersama|sahur|nongkrong|nongki|ngumpul|kumpul|kumpulan|jemput|antar|shopping|belanja|mall|cafe|warkop|warteg|rapat|diskusi|diskusiin|belajar|les|ngerjain|tugas|project|proyek|presentation|presentasi|kerja ?kelompok|kek|party|pesta|ultah|birthday|hbd|wedding|nikahan|nikah|reunion|reuni|concert|konser|gig|event|acara|gathering|kopdar|meet up)\b/i
+
+// Invitation cues: words that turn a time+place mention into a proposal aimed at
+// others. A message WITHOUT one of these is more likely a statement/answer than
+// an invite (see isInvitation below).
+const INVITE_CUES =
+  /\b(let'?s|lets|let us|wanna|want to|mau|ayo|ayok|yuk|gas|gaskeun|sikat|yok|shall we|how about|what about|gimana kalo|gmn kalo|kalo|join|joinin|ikutan|ikut|come|datang|pada bisa|bisa ga|bisa gak|free|available|luang|senggang|on\?|on gak|on ga|siapa yang|who'?s|ada yang|anyone|anybody|ada gak|ada ga|mau gak|mau ga|mau nggak|pengen|pengin|kepingin|interested|minat|down|dulu gais|gais|guys|rek|bro|sob)\b/i
+
+// Questions that ask FOR information rather than PROPOSE a plan. If a message
+// is a question led by one of these, it's not an invite (someone asking what
+// time something is, not suggesting one).
+const INFO_QUESTION =
+  /\b(what time|what day|jam berapa|tanggal berapa|kapan|where|dimana|di mana|tempatnya|where'?s|when|which|how much|berapa|udah jadi belum|jadi ga|jadi gak|fix belum|jadi belum|confirm)\b/i
+
+// Negation / past / statement signals that DISQUALIFY an invite even when the
+// intent word and a time are present.
+const PAST_TENSE =
+  /\b(went|going|gone|did|was|were|had|attended|met|played|watched|ate|joined|dateng|udah|sudah|tadi|kemarin|barusan|waktu itu|yesterday|last night|just now|already|udh|udah|selesai|done|siap)\b/i
+const QUESTION_ONLY = /\?\s*$/
+// Copula/statement markers: "the meeting IS AT 3pm", "it's on thursday". These
+// describe an existing event rather than propose one, so they need an explicit
+// invite cue to count.
+const STATEMENT_MARKER = /\b(is at|it'?s at|it is at|will be at|on thursday|on friday|on saturday|on sunday|on monday|on tuesday|on wednesday|ada di|jamnya|diadakan|bakal|akan di|rencananya|planning|already set|already planned)\b/i
+const I_ONLY = /\b(i|saya|gw|gue|aku|gua)\b/i
 
 // Accepts 3pm, 3 pm, 3:30pm, "3:00 p.m.", 15:00.
 const TIME_PATTERN = /(\d{1,2})(?::(\d{2}))?\s*(?:([ap])\.?\s?m\.?)?/i
 
 const MONTHS: Record<string, number> = {
   jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
-  may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7,
-  sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
+  may: 4, mei: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, agustus: 7, august: 7,
+  sep: 8, sept: 8, september: 8, okt: 9, oct: 9, october: 9, oktober: 9,
+  nov: 10, november: 10, nop: 10, des: 11, dec: 11, december: 11, desember: 11,
 }
 const MONTH_RE = Object.keys(MONTHS).join('|')
 
@@ -40,12 +64,42 @@ export interface Detection {
 }
 
 export function detect(body: string): Detection {
+  const isActivity = isInvitation(body)
   return {
-    isActivity: INTENT_WORDS.test(body),
+    isActivity,
     day: parseDay(body),
     time: parseTime(body),
     title: extractTitle(body),
   }
+}
+
+// Is this message actually proposing a get-together, rather than just mentioning
+// an activity or a time in passing? Combines three checks:
+//   1. an intent word is present,
+//   2. at least one invitation cue (or the message reads as a question to the
+//      group — "futsal sat 3pm?" with no cue still counts),
+//   3. none of the disqualifiers (past tense, "I already...", etc.) fire.
+function isInvitation(body: string): boolean {
+  if (!INTENT_WORDS.test(body)) return false
+  if (PAST_TENSE.test(body)) return false
+
+  // A question asking FOR info ("what time?") is not a proposal.
+  if (INFO_QUESTION.test(body)) return false
+
+  const hasCue = INVITE_CUES.test(body)
+  const isQuestion = QUESTION_ONLY.test(body.trim())
+  if (hasCue || isQuestion) return true
+
+  // A statement describing an existing event ("the meeting is at 3pm") needs a
+  // cue; don't surface it from the bare day+time alone.
+  if (STATEMENT_MARKER.test(body)) return false
+
+  // No cue and no question mark: likely a statement. But bare "futsal sat 3pm"
+  // in a group is often still an invite. Require BOTH a day and a time for the
+  // bare form — if it has neither, it's too ambiguous to surface.
+  const hasDay = parseDay(body) != null
+  const hasTime = parseTime(body) != null
+  return hasDay && hasTime
 }
 
 // JS getDay(): 0=Sun..6=Sat
@@ -57,8 +111,9 @@ export function parseDay(body: string, now = new Date()): Day | null {
     if (re.test(body)) return day
   }
   // Relative days, resolved against today.
-  if (/\btomorrow\b/i.test(body)) return JS_DAY[(now.getDay() + 1) % 7]!
-  if (/\b(today|tonight|tonite)\b/i.test(body)) return JS_DAY[now.getDay()]!
+  if (/\btomorrow\b|\bbesok\b|\besok\b/i.test(body)) return JS_DAY[(now.getDay() + 1) % 7]!
+  if (/\b(today|tonight|tonite|hari ini|malam ini)\b/i.test(body)) return JS_DAY[now.getDay()]!
+  // "next monday" — still resolves to the weekday name (day-granularity only).
   // Calendar dates: "13 september", "sept 30".
   let dayNum: number | undefined
   let mon: number | undefined
@@ -94,9 +149,9 @@ export function parseTime(body: string): number | null {
 
 function extractTitle(body: string): string {
   const t = body
-    .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/gi, '')
-    .replace(/\b(tomorrow|today|tonight|tonite)\b/gi, '')
-    .replace(/\b(on|at|this|next|lets|let's|wanna|want to|we should|yo|hey)\b/gi, '')
+    .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun|senin|senen|selasa|rabu|rebo|kamis|kemis|jumat|jum'at|sabtu|minggu|ahad)\b/gi, '')
+    .replace(/\b(tomorrow|besok|esok|today|tonight|tonite|hari ini|malam ini)\b/gi, '')
+    .replace(/\b(on|at|this|next|lets|let's|wanna|want to|we should|yo|hey|ayo|yuk|gas|mau|gimana|kalo)\b/gi, '')
     .replace(/\d{1,2}(?::\d{2})?\s*(am|pm)?/gi, '')
     .replace(/[?!.]+/g, '')
     .replace(/\s+/g, ' ')
