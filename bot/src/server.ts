@@ -59,8 +59,10 @@ export function startServer(send: Sender): void {
       }
       return end(res, 404, { error: 'not found' })
     } catch (e) {
+      // A send that couldn't get through (link down after retries) is a
+      // 503 — retryable — not a 500. The verdict has NOT been posted.
       logger.error({ e }, 'server error')
-      return end(res, 500, { error: 'server error' })
+      return end(res, 503, { ok: false, error: 'link down, try again' })
     }
   })
 
