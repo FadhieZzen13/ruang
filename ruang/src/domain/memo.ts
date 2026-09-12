@@ -13,12 +13,14 @@ export function parseMemo(text: string): ParsedMemo {
   const day = parseDay(text)
   const time = parseTime(text)
 
-  // Strip the day/time phrases to leave a rough title.
+  // Strip day/time phrases and request filler to leave a rough title.
   let title = text
     .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/gi, '')
-    .replace(/\bon\b/gi, '')
-    .replace(/\bat\b/gi, '')
-    .replace(/\d{1,2}(?::\d{2})?\s*(am|pm)?/gi, '')
+    .replace(/\b(tomorrow|today|tonight|tonite)\b/gi, '')
+    .replace(/\b(can you|could you|would you|please|remind me to|add|schedule|put|set up|create|book|make)\b/gi, '')
+    .replace(/\b(on|at|this|next|the)\b/gi, '')
+    .replace(/\d{1,2}(?::\d{2})?\s*(?:[ap]\.?\s?m\.?)?/gi, '')
+    .replace(/[?.!,]+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 
