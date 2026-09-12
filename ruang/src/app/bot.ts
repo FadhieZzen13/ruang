@@ -7,7 +7,7 @@ import type { Activity, Day } from '../domain/types'
 const env = import.meta.env as Record<string, string | undefined>
 const BOT_URL = (env.VITE_BOT_URL || 'http://localhost:8788').replace(/\/$/, '')
 const BOT_TOKEN = env.VITE_BOT_TOKEN || ''
-const AUTH_HEADERS = BOT_TOKEN ? { Authorization: `Bearer ${BOT_TOKEN}` } : {}
+const AUTH_HEADERS: Record<string, string> = BOT_TOKEN ? { Authorization: `Bearer ${BOT_TOKEN}` } : {}
 
 export interface PendingInvite {
   id: string
