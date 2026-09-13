@@ -114,15 +114,15 @@ The top row looked like the problem at first. But one student said something tha
 
 **Then we built it.** One app, one bot, one loop that works end to end.
 
-![mentor mapping 1](image-2.png)
+![mentor mapping 1](images/mentor%20mapping%201.png)
 
 _The 18 mentors mapped against the rubric, so we could pick the ones who would actually push the idea._
 
-![finalized mentor](image-3.png)
+![finalized mentor](images/finalized%20mentor.png)
 
 _These are the finalized mentor for our choice but we remove some due we already have answer and want to focus on the prototype instead_
 
-![Interview map](image-1.png)
+![Interview map](images/interview%20map.png)
 _The seven interviews, grouped. These are some of the screenshoots on the above._
 
 _The final flow. An invite arrives in a watched group → the listener spots it → it shows up privately in the app with an answer ready → you accept, decline or counter → only then does the group see anything._
