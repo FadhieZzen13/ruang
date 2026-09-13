@@ -6,9 +6,20 @@
 //      list in WATCHED_GROUPS. Never anything else. Empty list = watch nothing.
 //
 //   2. NEVER POST WITHOUT YOUR TAP. Ruang is silent in the group until you
-//      explicitly approve a verdict. There is exactly one code path that sends
-//      a message to a group (decisions.postVerdict), and it only runs from an
-//      explicit approval. Nothing about detecting a message ever replies.
+//      explicitly say so. There are exactly two code paths that send a message
+//      to a group — decisions.postVerdict (answering an invite) and
+//      decisions.postMessage (your own words, e.g. telling the group about a
+//      plan) — and each only runs from an explicit approval. Both refuse any
+//      group outside WATCHED_GROUPS. Nothing about detecting a message ever
+//      replies.
+//
+//      Note what this rule does NOT promise: that nobody else can reach the
+//      API. With BOT_AUTH_TOKEN blank the whole API is open, and both senders
+//      are reachable by anything that can hit the port (/pending lists the ids
+//      /decide needs). The tap is the gate on Ruang's own behaviour, not an
+//      access control. Set BOT_AUTH_TOKEN and don't expose the port if that
+//      matters — bearing in mind the app hands its copy of the token to every
+//      browser that loads it.
 //
 //   3. DAY-GRANULARITY REASONS ONLY. When you're busy, the group is told the
 //      day/part-of-day ("unavailable Thursday evening") — never the exact time

@@ -10,6 +10,8 @@ import {
   fmt,
 } from '../../app/store'
 import { parseMemo } from '../../domain/memo'
+import { isPlanRequest, parseRequest } from '../../domain/plan-parse'
+import { setPlanDraft } from '../../app/plan-draft'
 import { negotiate, expandRecurring, type Negotiation, type ResolveOption } from '../../domain/scheduling'
 import { DAY_LABEL, type Day, type Recurrence } from '../../domain/types'
 
@@ -37,7 +39,7 @@ function liteSchedule(): ScheduleLite[] {
   return getActivities().map((a) => ({ id: a.id, title: a.title, day: a.day, start: a.start }))
 }
 
-export function VoiceMemo() {
+export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [text, setText] = useState('')
   const [typed, setTyped] = useState('')
@@ -93,6 +95,32 @@ export function VoiceMemo() {
     setText(fullText)
     setPhase('thinking')
     setError('')
+
+    // "plan the lab report due friday" is a different kind of ask: it wants a
+    // whole schedule, not one block. Deadline is the only thing worth stopping
+    // for — size and pace have defaults you can change on the proposal.
+    if (isPlanRequest(fullText)) {
+      const req = parseRequest(fullText)
+      if (!req.deadline) {
+        context.current = fullText
+        setClarifyMode('missing')
+        const q = `When's ${req.title ? `the ${req.title.toLowerCase()}` : 'it'} due?`
+        setQuestion(q)
+        setPhase('clarify')
+        speak(q)
+        return
+      }
+      setPlanDraft({
+        title: req.title || 'New task',
+        deadline: req.deadline,
+        minutes: req.minutes ?? 240,
+        pace: req.pace ?? 'relaxed',
+      })
+      reset()
+      onPlan?.()
+      return
+    }
+
     let a: RawAction
     let source: 'agent' | 'offline' = 'agent'
     try {

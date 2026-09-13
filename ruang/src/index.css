@@ -1191,3 +1191,205 @@ input {
   border-radius: 6px;
   font-size: 12px;
 }
+
+
+/* ---- Tasks (build a plan) ---- */
+.task-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px;
+}
+
+.task-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.task-field input[type='date'] {
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+}
+
+.task-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 0 20px;
+}
+
+.task-form .task-field-label {
+  padding: 0;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 20px;
+}
+
+.chip.session {
+  align-items: center;
+}
+
+.session-n {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.session-edit {
+  flex: none;
+  align-self: center;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.session-edit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 20px;
+}
+
+.session-edit-card input[type='date'],
+.session-edit-card input[type='time'] {
+  flex: 1;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+}
+
+.plan-summary {
+  padding: 10px 20px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.share-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px 0;
+}
+
+.share-row .note-input,
+.share-row .add-input {
+  width: 100%;
+}
+
+.task-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+
+.task-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.task-card-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* The shared .answer-actions is a row (two side-by-side buttons in the voice
+   flow). Here it stacks: reassurance, then the commit, then the ways out. */
+.task-screen .answer-actions,
+.task-screen .answer-actions + * {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.task-screen .answer-actions .trustline {
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.task-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.task-links .btn-link {
+  width: auto;
+}
+
+.share-text {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.sub-note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: center;
+  margin-top: -4px;
+}
+
+/* ---- Plans started in WhatsApp ---- */
+.from-wa {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 20px 12px;
+}
+
+.from-wa-sessions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.from-wa-session {
+  font-size: 13px;
+  color: var(--ink-2);
+  padding-left: 10px;
+  border-left: 2px solid var(--gold);
+}
+
+.btn.btn-sml {
+  height: 38px;
+  flex: none;
+  padding: 0 16px;
+  font-size: 15px;
+  border-radius: var(--r-sm);
+}

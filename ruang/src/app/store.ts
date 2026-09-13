@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Activity, Day } from '../domain/types'
 import { SEED_ACTIVITIES } from '../data/seed'
+import { shiftToWeekday } from '../domain/occurrence'
 import { syncSchedule } from './bot'
 
 interface AppState {
@@ -77,8 +78,32 @@ export function removeActivity(id: string): void {
   setActivities(activities.filter((a) => a.id !== id))
 }
 
-export function moveActivity(id: string, day: Day, start: number, end: number): void {
-  setActivities(activities.map((a) => (a.id === id ? { ...a, day, start, end } : a)))
+// Bulk delete in one pass — otherwise dropping a 4-session plan fires four
+// separate schedule syncs to the bot.
+export function removeActivities(ids: string[]): void {
+  const drop = new Set(ids)
+  setActivities(activities.filter((a) => !drop.has(a.id)))
+}
+
+// `date` moves with the weekday. A pinned activity whose day and date disagree
+// would show up on one day and be scheduled against another, so when the caller
+// doesn't say where it landed, walk its date forward to the new weekday.
+export function moveActivity(
+  id: string,
+  day: Day,
+  start: number,
+  end: number,
+  date?: string,
+): void {
+  setActivities(
+    activities.map((a) => {
+      if (a.id !== id) return a
+      const next = { ...a, day, start, end }
+      if (date) next.date = date
+      else if (a.date) next.date = shiftToWeekday(a.date, day)
+      return next
+    }),
+  )
 }
 
 export function getActivities(): Activity[] {

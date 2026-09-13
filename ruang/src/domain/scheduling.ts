@@ -22,8 +22,8 @@ export function findConflict(
 }
 
 // Waking hours — don't suggest 3am. Free slots live between these.
-const DAY_START = 8 * 60 // 8am
-const DAY_END = 22 * 60 // 10pm
+export const DAY_START = 8 * 60 // 8am
+export const DAY_END = 22 * 60 // 10pm
 
 // The free/busy scan behind the counter-offer. Walk the same day, then the
 // following days, and return the first daytime gap long enough to hold `minutes`.
@@ -142,9 +142,12 @@ export function expandRecurring(
   if (base.recurrence !== 'weekly') {
     return [{ ...base, id: idFor(base.day, 0) }]
   }
+  // A weekly thing floats on its weekday — carrying one date across all seven
+  // copies would pin Tuesday's clone to Monday's date.
+  const { date: _pinned, ...floating } = base
   const startIdx = DAY_ORDER.indexOf(base.day)
   return DAY_ORDER.slice(startIdx).map((day, i) => ({
-    ...base,
+    ...floating,
     id: idFor(day, i),
     day,
   }))

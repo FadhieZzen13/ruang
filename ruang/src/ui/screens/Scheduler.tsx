@@ -8,7 +8,7 @@ import {
   loadDemo,
   setName,
 } from '../../app/store'
-import { DAY_LABEL, type ActivityKind } from '../../domain/types'
+import { DAY_LABEL, type ActivityKind, type Day } from '../../domain/types'
 import {
   DOW_LABELS,
   monthMatrix,
@@ -17,6 +17,7 @@ import {
   dayKeyOf,
   sameDay,
 } from '../../app/dates'
+import { activitiesOn, isoDate, occursOn } from '../../domain/occurrence'
 
 const KINDS: ActivityKind[] = ['class', 'meeting', 'activity', 'work']
 
@@ -31,16 +32,20 @@ export function Scheduler() {
   const armed = useRef(false)
 
   const cells = useMemo(() => monthMatrix(view), [view])
-  const busyDays = useMemo(() => {
-    const set = new Set<string>()
-    for (const a of activities) set.add(a.day)
-    return set
+  // Two sets, because a day can be busy for two different reasons: something
+  // pinned to that exact date, or something floating on that weekday.
+  const busy = useMemo(() => {
+    const dated = new Set<string>()
+    const floating = new Set<Day>()
+    for (const a of activities) {
+      if (a.date) dated.add(a.date)
+      else floating.add(a.day)
+    }
+    return { dated, floating }
   }, [activities])
 
   const selectedKey = dayKeyOf(selected)
-  const agenda = activities
-    .filter((a) => a.day === selectedKey)
-    .sort((a, b) => a.start - b.start)
+  const agenda = activitiesOn(activities, selected).sort((a, b) => a.start - b.start)
 
   const isToday = sameDay(selected, today)
 
@@ -48,7 +53,7 @@ export function Scheduler() {
     for (let offset = 1; offset <= 7; offset++) {
       const d = new Date(selected)
       d.setDate(d.getDate() + offset)
-      const items = activities.filter((a) => a.day === dayKeyOf(d))
+      const items = activities.filter((a) => occursOn(a, d))
       if (items.length) return { date: d, count: items.length }
     }
     return null
@@ -131,7 +136,9 @@ export function Scheduler() {
             return (
               <button key={date.toISOString()} className={cls} onClick={() => setSelected(date)}>
                 {date.getDate()}
-                {busyDays.has(dayKeyOf(date)) && <span className="cal-dot" />}
+                {(busy.dated.has(isoDate(date)) || busy.floating.has(dayKeyOf(date))) && (
+                  <span className="cal-dot" />
+                )}
               </button>
             )
           })}
@@ -165,6 +172,8 @@ export function Scheduler() {
               locked: false,
               description: '',
               recurrence: 'once',
+              // A one-off belongs to the day you picked, not to every Tuesday.
+              date: isoDate(selected),
             })
             setAdding(false)
           }}

@@ -1,7 +1,9 @@
 import './env.js'
 import { detect } from './detect.js'
 import { isBusy, nextEvening, conflictReason, hasSchedule } from './schedule.js'
-import { addPending, listPending, postVerdict, type Pending, type Decision } from './decisions.js'
+import { addPending, listPending, postMessage, postVerdict, type Pending, type Decision } from './decisions.js'
+import { routeOwnerLine, sharePlan } from './plan-chat.js'
+import { isPlanRequest } from './plan-parse.js'
 import { connect, type IncomingMessage, type Wa } from './wa.js'
 import { startControl, renderPending } from './control.js'
 import { startServer } from './server.js'
@@ -17,6 +19,18 @@ const nextId = () => `a${++seq}`
 // and SURFACE it three ways (terminal + WhatsApp DM + the app's inbox) — but
 // never reply. Posting only happens later, on your explicit approval.
 function onMessage(m: IncomingMessage): void {
+  // Someone else asking Ruang to plan. You chose that only YOUR messages start a
+  // plan, so this is ignored on purpose — but say so, because a silent drop is
+  // indistinguishable from a broken bot.
+  if (isPlanRequest(m.body)) {
+    logger.warn(
+      { author: m.author, group: m.groupName },
+      `ignored "${m.body}" — only your own messages can ask for a plan. ` +
+        `If that was you, you sent it from a different account than the one Ruang is linked to.`,
+    )
+    return
+  }
+
   const d = detect(m.body)
   if (!d.isActivity || !d.day || d.time == null) return
 
@@ -44,8 +58,37 @@ function dmFor(p: Pending): string {
   return `🔔 *${p.groupName}* — ${p.author}\n"${p.ask}"\n\n→ ${when}  (${status})${counter}\n\nReply *yes*, *no*, or *counter*  (id ${p.id}). Nothing posts until you do.`
 }
 
-// You replied in your "Message Yourself" chat. Parse a decision and post it.
-async function onOwnerCommand(text: string): Promise<void> {
+// Where a shared plan's calendar file is reachable from. Phones need a host
+// they can actually open, so point this at your tunnel when you have one.
+const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN || `http://localhost:${process.env.BOT_PORT || 8788}`
+
+// Plan drafts print in the terminal too, the same way invites do — so you can
+// see what Ruang understood without reaching for your phone.
+function renderPlan(text: string): void {
+  const indented = text
+    .split('\n')
+    .map((line) => `   ${line}`)
+    .join('\n')
+  console.log(`\n📝 plan\n${indented}\n`)
+}
+
+// You said something — in your self-chat, or in a watched group from your own
+// number. Planning gets first refusal; anything it doesn't recognise falls
+// through to the yes/no/counter commands.
+async function onOwnerCommand(text: string, fromGroup?: string): Promise<void> {
+  const routed = routeOwnerLine(text, fromGroup ?? null)
+  logger.info({ matched: routed?.kind ?? 'none' }, 'owner line routed')
+  if (routed) {
+    const said =
+      routed.kind === 'share'
+        ? await sharePlan(wa.sendToGroup, postMessage, routed.draft, PUBLIC_ORIGIN)
+        : routed.reply.text
+    // The terminal sees everything the DM sees — same as invites.
+    renderPlan(said)
+    await wa.sendToOwner(said)
+    return
+  }
+
   const [verb, arg] = text.trim().toLowerCase().split(/\s+/)
   const map: Record<string, Decision> = {
     yes: 'accept', y: 'accept',
@@ -53,7 +96,10 @@ async function onOwnerCommand(text: string): Promise<void> {
     counter: 'counter', c: 'counter',
   }
   const decision = verb ? map[verb] : undefined
-  if (!decision) return // not a command (ignores the bot's own DM posts)
+  if (!decision) {
+    logger.info({ text }, 'not a command and not a plan request — ignored')
+    return // ignores ordinary chatter, and the bot's own DM posts
+  }
 
   let id = arg
   if (!id) {
@@ -81,7 +127,7 @@ async function main(): Promise<void> {
     return
   }
 
-  startServer(wa.sendToGroup) // app: schedule sync + in-app approvals
+  startServer(wa.sendToGroup, wa.getGroupName) // app: schedule sync + in-app approvals
 
   if (WATCHED_GROUPS.length === 0) {
     logger.warn('WATCHED_GROUPS is empty — Ruang is watching NO groups (rule 1). Add JIDs via `npm run groups`, then .env.')

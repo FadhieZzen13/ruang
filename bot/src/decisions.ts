@@ -1,6 +1,7 @@
 import type { Day } from './types.js'
 import { DAY_LABEL, fmt } from './types.js'
 import { conflictReason } from './schedule.js'
+import { isWatched } from './config.js'
 import { logger } from './logger.js'
 
 // A detected invite waiting for YOUR decision. Nothing here has been sent.
@@ -46,10 +47,32 @@ export async function postVerdict(
 ): Promise<boolean> {
   const p = pending.get(id)
   if (!p) return false
+  // Defence in depth: a Pending can only come from a watched group, so this
+  // never fires — but sending is the one place to be paranoid.
+  if (!isWatched(p.groupJid)) {
+    logger.warn({ id, group: p.groupJid }, 'refused to post to an unwatched group')
+    return false
+  }
   const line = decision === 'custom' ? (customText?.trim() || verdictLine(p, 'decline')) : verdictLine(p, decision)
   await send(p.groupJid, line)
   pending.delete(id)
   logger.info({ id, decision, group: p.groupName }, 'verdict posted (on your tap)')
+  return true
+}
+
+// RULE 2, second and last path: your own words, to a group you chose, on your
+// tap in the app. No pending invite involved — this is you starting the
+// sentence rather than answering one. Two things keep it honest: it runs only
+// from an explicit approval, and it refuses any group outside WATCHED_GROUPS.
+export async function postMessage(send: Sender, groupJid: string, text: string): Promise<boolean> {
+  const line = text.trim()
+  if (!line) return false
+  if (!isWatched(groupJid)) {
+    logger.warn({ groupJid }, 'refused to post to an unwatched group')
+    return false
+  }
+  await send(groupJid, line)
+  logger.info({ group: groupJid }, 'message posted (on your tap)')
   return true
 }
 

@@ -3,3 +3,4 @@ auth/
 .env
 *.log
 schedule.local.json
+plans.local.json

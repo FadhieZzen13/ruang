@@ -1,27 +1,13 @@
 import type { Day } from '../domain/types'
 import { DAY_LABEL } from '../domain/types'
 import { fmt } from './store'
+import { chatJson } from './llm'
 
 // The agent: turns a spoken memo into a scheduling ACTION against your week —
 // add a new thing, move an existing one, or cancel one. Talks to an
 // OpenAI-compatible gateway via the Vite dev proxy (/llm); the key stays
 // server-side. The model does the understanding; applying the change and the
 // conflict math stay local and deterministic.
-
-const env = import.meta.env as Record<string, string | undefined>
-
-// Providers are tried in order — DeepSeek first, the existing gateway as
-// fallback. Each is an OpenAI-compatible /chat/completions endpoint reached
-// through a Vite proxy (see vite.config.ts) that injects its key server-side.
-interface Provider {
-  name: string
-  base: string
-  model: string
-}
-const PROVIDERS: Provider[] = [
-  { name: 'DeepSeek', base: '/deepseek', model: env.VITE_DEEPSEEK_MODEL || 'deepseek-chat' },
-  { name: 'Kimi', base: '/llm', model: env.VITE_LLM_MODEL || 'kimi-k2.7' },
-]
 
 const VALID_DAYS: Day[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const VALID_ACTIONS = ['create', 'move', 'cancel'] as const
@@ -74,43 +60,13 @@ ${list}`
 }
 
 export async function proposeAction(transcript: string, schedule: ScheduleLite[]): Promise<AgentAction> {
-  const messages = [
+  const { json, provider } = await chatJson([
     { role: 'system', content: systemPrompt(schedule) },
     { role: 'user', content: transcript },
-  ]
-  let lastError: unknown
-
-  // Try each provider in order; return the first that answers cleanly. Each gets
-  // a timeout so a slow/unreachable provider fails fast and we fall to the next
-  // instead of hanging (DeepSeek's TCP connect can time out from some regions).
-  const TIMEOUT_MS = 12000
-  for (const p of PROVIDERS) {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
-    try {
-      const res = await fetch(`${p.base}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: p.model, temperature: 0, response_format: { type: 'json_object' }, messages }),
-        signal: ctrl.signal,
-      })
-      if (!res.ok) throw new Error(`${p.name} failed: ${res.status}`)
-      const data = await res.json()
-      const content: string = data.choices?.[0]?.message?.content ?? '{}'
-      const action = normalize(JSON.parse(stripFences(content)), schedule)
-      action.provider = p.name
-      return action
-    } catch (e) {
-      lastError = e // fall through to the next provider
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-  throw lastError ?? new Error('all providers failed')
-}
-
-function stripFences(s: string): string {
-  return s.replace(/```json\s*|\s*```/g, '').trim()
+  ])
+  const action = normalize(json, schedule)
+  action.provider = provider
+  return action
 }
 
 function normalize(raw: unknown, schedule: ScheduleLite[]): AgentAction {

@@ -21,21 +21,55 @@ export interface IncomingMessage {
 
 export interface Handlers {
   onMessage: (m: IncomingMessage) => void
-  // Text you send in your own "Message Yourself" chat — the DM control channel.
-  onOwnerCommand: (text: string) => void
+  // Text YOU sent: in your own "Message Yourself" chat (the DM control
+  // channel), or in a watched group from your own number. `groupJid` is set
+  // only for the latter, so a plan asked for in a group knows where it'd go.
+  onOwnerCommand: (text: string, groupJid?: string) => void
 }
 
 export interface Wa {
   sendToGroup: (jid: string, text: string) => Promise<void>
   sendToOwner: (text: string) => Promise<void> // posts to your self-chat
   listGroups: () => Promise<{ jid: string; name: string }[]>
+  // Name of a group we've already seen, from the cache warmed on connect.
+  // Never fetches — the API uses this and must not trigger WhatsApp calls.
+  getGroupName: (jid: string) => string
 }
 
 const groupNames = new Map<string, string>()
 
+// Ids of messages THIS socket sent. Everything the bot says lands back in
+// messages.upsert as fromMe — its own DM in your self-chat, its own post in a
+// watched group — and without this it reads its own words as your instructions.
+// A plan reply starts with "Plan for ...", which is itself a plan request: that
+// is an infinite loop that sends you hundreds of messages.
+const sentByUs = new Set<string>()
+function rememberSent(id?: string | null): void {
+  if (!id) return
+  sentByUs.add(id)
+  // Bounded: this is an echo guard, not a history.
+  if (sentByUs.size > 500) sentByUs.delete(sentByUs.values().next().value as string)
+}
+
+// A message you type on your PHONE arrives at a linked device wrapped: WhatsApp
+// syncs it as deviceSentMessage (and ephemeral/view-once chats add their own
+// layer). Read the wrapper and the text is empty, so the message gets dropped
+// before anything can route it — which looks exactly like the bot ignoring you.
+type Content = NonNullable<WAMessage['message']>
+function unwrap(m: Content): Content {
+  return (
+    m.deviceSentMessage?.message ??
+    m.ephemeralMessage?.message ??
+    m.viewOnceMessage?.message ??
+    m.viewOnceMessageV2?.message ??
+    m.documentWithCaptionMessage?.message ??
+    m
+  )
+}
+
 function textOf(msg: WAMessage): string {
-  const m = msg.message
-  if (!m) return ''
+  if (!msg.message) return ''
+  const m = unwrap(msg.message)
   return (
     m.conversation ||
     m.extendedTextMessage?.text ||
@@ -123,18 +157,40 @@ export async function connect(handlers: Handlers): Promise<Wa> {
       for (const msg of messages) {
         const jid = msg.key.remoteJid
         if (!jid) continue
+        // Our own words, echoed back. Never treat them as input.
+        if (msg.key.id && sentByUs.has(msg.key.id)) continue
         const body = textOf(msg)
-        if (!body) continue
+        if (!body) {
+          // Yours, but we couldn't read it — worth knowing about rather than
+          // silently ignoring, since that's indistinguishable from a dead bot.
+          if (msg.key.fromMe && msg.message) {
+            logger.warn({ kinds: Object.keys(unwrap(msg.message)) }, 'your message had no text we could read')
+          }
+          continue
+        }
 
         // Your DM control channel: text you type in your own "Message Yourself" chat.
         if (selfJid && jid === selfJid && msg.key.fromMe) {
+          logger.info({ from: 'self-chat' }, `you said: "${body}"`)
           handlers.onOwnerCommand(body)
           continue
         }
 
         if (!isJidGroup(jid)) continue // RULE 1: groups only, never other DMs/status
-        if (msg.key.fromMe && !LISTEN_TO_SELF) continue // ignore own group messages (unless testing)
-        if (!isWatched(jid)) continue // RULE 1: only the groups you chose
+        if (!isWatched(jid)) {
+          // The commonest "why did nothing happen": right words, wrong chat.
+          if (msg.key.fromMe) logger.warn({ jid }, 'ignored — that group is not in WATCHED_GROUPS')
+          continue
+        }
+
+        // Your own message in a watched group. It's never an invite to you, but
+        // it may be you asking Ruang to plan something — so it goes to the owner
+        // channel, not the invite detector.
+        if (msg.key.fromMe && !LISTEN_TO_SELF) {
+          logger.info({ from: groupNames.get(jid) || jid }, `you said: "${body}"`)
+          handlers.onOwnerCommand(body, jid)
+          continue
+        }
 
         handlers.onMessage({
           groupJid: jid,
@@ -186,8 +242,19 @@ export async function connect(handlers: Handlers): Promise<Wa> {
   await open()
 
   return {
-    sendToGroup: (jid, text) => sendWithRetry(async () => { if (sock) await sock.sendMessage(jid, { text }) }, 'to group'),
-    sendToOwner: (text) => sendWithRetry(async () => { if (sock && selfJid) await sock.sendMessage(selfJid, { text }) }, 'to owner'),
+    sendToGroup: (jid, text) =>
+      sendWithRetry(async () => {
+        if (!sock) return
+        const sent = await sock.sendMessage(jid, { text })
+        rememberSent(sent?.key?.id)
+      }, 'to group'),
+    sendToOwner: (text) =>
+      sendWithRetry(async () => {
+        if (!sock || !selfJid) return
+        const sent = await sock.sendMessage(selfJid, { text })
+        rememberSent(sent?.key?.id)
+      }, 'to owner'),
+    getGroupName: (jid) => groupNames.get(jid) ?? '',
     listGroups: async () => {
       if (!sock) return []
       const all = await sock.groupFetchAllParticipating()

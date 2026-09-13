@@ -14,6 +14,9 @@ export interface Activity {
   locked: boolean
   description: string
   recurrence: Recurrence
+  // 'YYYY-MM-DD' — pinned to one calendar date. Absent means it floats on its
+  // weekday, which is how everything behaved before planned sessions existed.
+  date?: string
 }
 
 export const DAY_ORDER: Day[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']

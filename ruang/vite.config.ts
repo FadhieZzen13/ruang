@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
   const dsKey = env.DEEPSEEK_API_KEY || ''
   // Voicebox — local TTS app (returns WAV). Proxied to dodge CORS.
   const voicebox = env.VOICEBOX_URL || 'http://localhost:17493'
+  // The Ruang bot's API. Proxied so the browser calls same-origin /bot/* —
+  // "localhost" in a phone's browser is the phone, not this machine.
+  const bot = env.BOT_URL || 'http://localhost:8788'
 
   return {
     plugins: [
@@ -38,10 +41,26 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     server: {
+      // Bind every interface so a phone on the same Wi-Fi can reach the dev
+      // server at http://<your-lan-ip>:5173 — no `--host` flag needed.
+      host: true,
+      port: 5173,
+      // Vite rejects requests whose Host header it doesn't recognise (DNS
+      // rebinding protection). Tunnel domains have to be named explicitly, or
+      // cloudflared/ngrok just return "Blocked request".
+      allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.io', '.loca.lt'],
       // The browser can't call the LLM gateway directly (no CORS headers).
       // So the browser hits same-origin /llm/*, and Vite proxies it upstream
       // with the API key injected here — the key never reaches the client.
       proxy: {
+        // The bot's local API (pending invites, decisions, schedule sync).
+        // Runs on this machine, so localhost resolves correctly here even when
+        // the page itself is being viewed on a phone.
+        '/bot': {
+          target: bot,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/bot/, ''),
+        },
         // Local Voicebox TTS (WAV audio). No key.
         '/voicebox': {
           target: voicebox,
