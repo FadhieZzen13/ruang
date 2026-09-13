@@ -58,7 +58,7 @@ export function parseDeadline(body: string, now = new Date()): string | null {
   // "20 sep" / "sep 20"
   let dayNum: number | undefined
   let mon: number | undefined
-  let m = body.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_RE})\\b`, 'i'))
+  let m = body.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_RE})\\b`, 'i'))
   if (m) {
     dayNum = parseInt(m[1]!, 10)
     mon = MONTHS[m[2]!.toLowerCase()]
@@ -125,18 +125,19 @@ export function parseTitle(body: string): string {
     .replace(/\b(due|deadline|by|before|sebelum|paling lambat|dl)\b/gi, ' ')
     .replace(/\b(?:is|it's|it is)\s+on\b/gi, ' ')
     .replace(/\bme\b/gi, ' ')
-    .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTH_RE})\\b`, 'gi'), ' ')
+    .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${MONTH_RE})\\b`, 'gi'), ' ')
     .replace(new RegExp(`\\b(?:${MONTH_RE})\\s+\\d{1,2}(?:st|nd|rd|th)?\\b`, 'gi'), ' ')
     .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues|tue|wed|thurs|thu|fri|sat|sun|senin|senen|selasa|rabu|rebo|kamis|kemis|jumat|jum'at|sabtu|minggu|ahad)\b/gi, ' ')
     .replace(/\b(today|tonight|tomorrow|besok|esok|hari ini|malam ini)\b/gi, ' ')
     .replace(/\bin\s+\d{1,2}\s+days?\b|\b\d{1,2}\s+hari\s+lagi\b/gi, ' ')
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:[ap])\.?\s?m\.?\b/gi, ' ')
     .replace(/\b\d{1,2}(?:\.5)?\s*(?:h|hr|hrs|hour|hours|jam)\b/gi, ' ')
     .replace(/\b\d{1,3}\s*(?:m|min|mins|minutes|menit)\b/gi, ' ')
     .replace(/\bhalf\s+a?\s*day\b|\bsetengah\s+hari\b|\b(a|one|1)\s+(full\s+)?day\b|\bsehari\b/gi, ' ')
     .replace(/\b(quick|quickly|fast|asap|cepat|slow|spread|santai|pelan|cicil|nyicil)\b/gi, ' ')
     // "could you plan X" / "bisa jadwalin X" — politeness, not the title.
     .replace(/\b(could|can|would|will|bisa|bisakah)\s+(you|u|kamu|lo|lu)?\b/gi, ' ')
-    .replace(/\b(the|my|our|a|an|for|please|pls|tolong|mohon|dong|ya|yah|buat|untuk|ruang)\b/gi, ' ')
+    .replace(/\b(the|my|our|a|an|for|on|please|pls|tolong|mohon|dong|ya|yah|buat|untuk|ruang)\b/gi, ' ')
     .replace(/[,:;.!?]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

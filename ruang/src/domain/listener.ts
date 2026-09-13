@@ -37,7 +37,7 @@ export function parseDay(body: string, now = new Date()): Day | null {
 export function parseDate(body: string, now = new Date()): Day | null {
   let dayNum: number | undefined
   let mon: number | undefined
-  let m = body.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_RE})\\b`, 'i'))
+  let m = body.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_RE})\\b`, 'i'))
   if (m) {
     dayNum = parseInt(m[1], 10)
     mon = MONTHS[m[2].toLowerCase()]
@@ -58,7 +58,7 @@ export function parseDate(body: string, now = new Date()): Day | null {
 export function parseTime(body: string): number | null {
   // Strip date phrases first, so "13 September" isn't read as 1pm.
   const clean = body
-    .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTH_RE})\\b`, 'gi'), ' ')
+    .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${MONTH_RE})\\b`, 'gi'), ' ')
     .replace(new RegExp(`\\b(?:${MONTH_RE})\\s+\\d{1,2}(?:st|nd|rd|th)?\\b`, 'gi'), ' ')
   const m = clean.match(TIME_PATTERN)
   if (!m) return null

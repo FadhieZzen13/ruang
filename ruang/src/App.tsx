@@ -88,7 +88,7 @@ export default function App() {
 
 // The Schedule tab now opens on the Today dashboard, with the shipped month
 // calendar one tap away. Both live in one tab so nothing that already worked
-// (Demo/Clear, +Add, recurrence) was thrown out to make room.
+// (´/Clear, +Add, recurrence) was thrown out to make room.
 function ScheduleTab() {
   const [view, setView] = useState<'today' | 'month'>('today')
   return view === 'today' ? (
