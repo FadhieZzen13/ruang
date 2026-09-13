@@ -64,16 +64,31 @@ already set to Power On (see homeserver-handover.md).
 
 ## 3. Exposing the bot API (for VITE_BOT_URL)
 
-The bot's HTTP API (`:8788`, schedule sync + in-app approvals) is bound to
-`127.0.0.1` on the server. To let the Vercel frontend reach it, add a public
-hostname in Cloudflare Zero Trust → Tunnels → homeserver → Public hostname:
+The bot's HTTP API (`:8791` — 8788/8790 are taken by File Browser / zym on this
+box) is bound to `127.0.0.1` on the server. To let the Vercel frontend reach it,
+add a public hostname in Cloudflare Zero Trust → Tunnels → homeserver → Public
+hostname:
 
 - Subdomain: `bot` (→ `bot.zhermes.top`)
-- Service: HTTP → `localhost:8788`
+- Service: HTTP → `localhost:8791`
 
-Then set `VITE_BOT_URL=https://bot.zhermes.top` on Vercel.
+Then set these on Vercel:
 
-> ⚠️ **Security:** this endpoint has **no auth** and can approve verdicts on your
-> behalf. Expose it only for a demo, or gate it with Cloudflare Access. The safe
-> production path is to approve via the WhatsApp DM (which already works and is
-> private) and keep `:8788` localhost-only.
+- `VITE_BOT_URL=https://bot.zhermes.top`
+- `VITE_BOT_TOKEN=<same value as BOT_AUTH_TOKEN in bot/.env>`
+
+### Auth model
+
+The API is **token-protected** via `BOT_AUTH_TOKEN` (bot side) / `VITE_BOT_TOKEN`
+(app side). The app sends the token as `Authorization: Bearer <token>`.
+
+- `/health` and `/plan/<slug>` (and `/plan/<slug>.ics`) are **public** — the
+  health probe and the share links people open from a group chat.
+- Everything else — `/pending`, `/drafts`, `/plan`, `/owner`, `/say`, `/decide`,
+  `/schedule`, `/groups` — requires the token and returns `401` without it.
+
+So you *can* publish `bot.zhermes.top` without Cloudflare Access: the token is
+the gate. (Anyone who guesses the token can still act on your behalf, so keep it
+strong and treat it as a secret — the same weight as your other `.env` values.)
+To keep the API fully localhost-only, simply leave the Cloudflare hostname
+unpublished and approve via the WhatsApp DM instead.
