@@ -17,6 +17,10 @@ export interface IncomingMessage {
   groupName: string
   author: string // display name or number of the sender
   body: string
+  // True only under LISTEN_TO_SELF, where your own message is replayed through
+  // the invite detector for solo testing. It has already gone to the owner
+  // channel, so planning must not warn about it a second time.
+  fromMe: boolean
 }
 
 export interface Handlers {
@@ -185,14 +189,17 @@ export async function connect(handlers: Handlers): Promise<Wa> {
 
         // Your own message in a watched group. It's never an invite to you, but
         // it may be you asking Ruang to plan something — so it goes to the owner
-        // channel, not the invite detector.
-        if (msg.key.fromMe && !LISTEN_TO_SELF) {
+        // channel, not the invite detector. LISTEN_TO_SELF only adds the invite
+        // path for solo testing; it must never take the owner path away, or
+        // asking for a plan in a group silently does nothing.
+        if (msg.key.fromMe) {
           logger.info({ from: groupNames.get(jid) || jid }, `you said: "${body}"`)
           handlers.onOwnerCommand(body, jid)
-          continue
+          if (!LISTEN_TO_SELF) continue
         }
 
         handlers.onMessage({
+          fromMe: Boolean(msg.key.fromMe),
           groupJid: jid,
           groupName: groupNames.get(jid) || jid,
           author: msg.pushName || msg.key.participant || 'someone',

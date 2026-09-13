@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getPending, decide, type PendingInvite, type Decision } from '../../app/bot'
-import { fmt } from '../../app/store'
+import { addActivity, focusScheduleDate, fmt, getActivities } from '../../app/store'
+import { isoDate, shiftToWeekday } from '../../domain/occurrence'
 import { DAY_LABEL } from '../../domain/types'
 
 // Invites the WhatsApp bot detected, waiting on you. Approving here posts the
@@ -23,7 +24,28 @@ export function Inbox() {
 
   const act = async (id: string, decision: Decision, message?: string) => {
     setBusyId(id)
+    const invite = invites?.find((item) => item.id === id)
     await decide(id, decision, message)
+    if (invite && (decision === 'accept' || decision === 'counter' || decision === 'custom')) {
+      const slot = decision === 'counter' && invite.counter ? invite.counter : invite
+      const activityId = `invite-${invite.id}`
+      if (!getActivities().some((activity) => activity.id === activityId)) {
+        const date = shiftToWeekday(isoDate(new Date()), slot.day)
+        addActivity({
+          id: activityId,
+          title: invite.ask,
+          day: slot.day,
+          start: slot.time,
+          end: slot.time + 60,
+          kind: 'meeting',
+          locked: false,
+          description: invite.groupName,
+          recurrence: 'once',
+          date,
+        })
+        focusScheduleDate(date)
+      }
+    }
     await refresh()
     setBusyId('')
     if (customFor === id) {

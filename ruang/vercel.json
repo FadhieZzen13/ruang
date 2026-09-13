@@ -1,3 +1,8 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/bot/:path*", "destination": "/api/bot/:path*" },
+    { "source": "/deepseek/:path*", "destination": "/api/deepseek/:path*" },
+    { "source": "/llm/:path*", "destination": "/api/llm/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

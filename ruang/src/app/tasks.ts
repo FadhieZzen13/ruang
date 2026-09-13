@@ -95,6 +95,10 @@ export function removeTask(id: string): void {
   setTasks(tasks.filter((t) => t.id !== id))
 }
 
+export function setTaskStatus(id: string, status: TaskStatus): void {
+  setTasks(tasks.map((t) => (t.id === id ? { ...t, status } : t)))
+}
+
 export function setTaskSessions(id: string, sessions: TaskSession[]): void {
   setTasks(tasks.map((t) => (t.id === id ? { ...t, sessions } : t)))
 }

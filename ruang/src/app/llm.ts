@@ -52,6 +52,13 @@ export async function chatJson(
         signal: ctrl.signal,
       })
       if (!res.ok) throw new Error(`${p.name} failed: ${res.status}`)
+      // These paths are Vite dev-server proxies. On a static host with an SPA
+      // catch-all they resolve to index.html with a 200, so without this check
+      // every provider "succeeds" into a JSON parse error and the whole chain
+      // reads as "no model" — see ruang/vercel.json.
+      if (!res.headers.get('content-type')?.includes('application/json')) {
+        throw new Error(`${p.name} returned HTML, not JSON — ${p.base} is not proxied on this host`)
+      }
       const data = await res.json()
       const content: string = data.choices?.[0]?.message?.content ?? '{}'
       return { json: JSON.parse(stripFences(content)), provider: p.name }

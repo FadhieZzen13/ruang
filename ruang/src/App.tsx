@@ -91,10 +91,19 @@ export default function App() {
 // (´/Clear, +Add, recurrence) was thrown out to make room.
 function ScheduleTab() {
   const [view, setView] = useState<'today' | 'month'>('today')
+  const [selectedDate, setSelectedDate] = useState(() => new Date())
   return view === 'today' ? (
-    <Today onMonth={() => setView('month')} />
+    <Today
+      selectedDate={selectedDate}
+      onSelectDate={setSelectedDate}
+      onMonth={() => setView('month')}
+    />
   ) : (
-    <Scheduler onToday={() => setView('today')} />
+    <Scheduler
+      selectedDate={selectedDate}
+      onSelectDate={setSelectedDate}
+      onToday={() => setView('today')}
+    />
   )
 }
 

@@ -15,6 +15,7 @@ const NAME_KEY = 'ruang.name.v1'
 let activities: Activity[] = loadActivities()
 let name: string = loadName()
 let state: AppState = { activities, name }
+let focusDate: string | null = null
 const listeners = new Set<() => void>()
 
 void syncSchedule(activities) // push the current week to the bot on load
@@ -112,6 +113,16 @@ export function moveActivity(
 
 export function getActivities(): Activity[] {
   return activities
+}
+
+export function focusScheduleDate(date: string): void {
+  focusDate = date
+}
+
+export function takeFocusedScheduleDate(): string | null {
+  const date = focusDate
+  focusDate = null
+  return date
 }
 
 // Demo controls: start from an empty week, or reload the built-in demo week.

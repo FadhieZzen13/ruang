@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { fmt, useAppState } from '../../app/store'
+import { fmt, takeFocusedScheduleDate, useAppState } from '../../app/store'
 import { useTasks } from '../../app/tasks'
 import { getPending, type PendingInvite } from '../../app/bot'
-import { activitiesOn, isoDate } from '../../domain/occurrence'
+import { activitiesOn, dateFromIso, isoDate } from '../../domain/occurrence'
 import { DAY_LABEL, type Activity, type ActivityKind, type Day } from '../../domain/types'
 import { courseTint } from '../../domain/course'
 import { deadlineMinutes, type Task } from '../../domain/task'
@@ -30,13 +30,25 @@ const KIND_WASH: Record<ActivityKind, string> = {
   work: '#f6e6df',
 }
 
-export function Today({ onMonth }: { onMonth: () => void }) {
+export function Today({
+  onMonth,
+  selectedDate,
+  onSelectDate,
+}: {
+  onMonth: () => void
+  selectedDate: Date
+  onSelectDate: (date: Date) => void
+}) {
   const { activities, name } = useAppState()
   const tasks = useTasks()
   const [view, setView] = useState<View>('plan')
   const [invites, setInvites] = useState<PendingInvite[] | null>(null)
   const [now, setNow] = useState(() => new Date())
-  const [selectedDay, setSelectedDay] = useState(() => new Date())
+  const [focusedDate] = useState(() => takeFocusedScheduleDate())
+  useEffect(() => {
+    if (focusedDate) onSelectDate(dateFromIso(focusedDate))
+  }, [focusedDate, onSelectDate])
+  const selectedDay = selectedDate
 
   // A live NOW marker needs a ticking clock, not a render-time Date.
   useEffect(() => {
@@ -97,7 +109,7 @@ export function Today({ onMonth }: { onMonth: () => void }) {
         activities={activities}
         today={now}
         selected={selectedDay}
-        onSelect={setSelectedDay}
+        onSelect={onSelectDate}
       />
 
       <SegmentedUnderline

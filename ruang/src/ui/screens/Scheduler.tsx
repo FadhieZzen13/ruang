@@ -19,12 +19,20 @@ import { activitiesOn, isoDate, occursOn } from '../../domain/occurrence'
 
 const KINDS: ActivityKind[] = ['class', 'meeting', 'activity', 'work']
 
-export function Scheduler({ onToday }: { onToday?: () => void }) {
+export function Scheduler({
+  onToday,
+  selectedDate,
+  onSelectDate,
+}: {
+  onToday?: () => void
+  selectedDate: Date
+  onSelectDate: (date: Date) => void
+}) {
   const { activities, name } = useAppState()
   const today = useMemo(() => new Date(), [])
   const [editingName, setEditingName] = useState(false)
-  const [view, setView] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
-  const [selected, setSelected] = useState(today)
+  const [view, setView] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
+  const selected = selectedDate
   const [adding, setAdding] = useState(false)
 
   const cells = useMemo(() => monthMatrix(view), [view])
@@ -112,7 +120,7 @@ export function Scheduler({ onToday }: { onToday?: () => void }) {
               .filter(Boolean)
               .join(' ')
             return (
-              <button key={date.toISOString()} className={cls} onClick={() => setSelected(date)}>
+                <button key={date.toISOString()} className={cls} onClick={() => onSelectDate(date)}>
                 {date.getDate()}
                 {(busy.dated.has(isoDate(date)) || busy.floating.has(dayKeyOf(date))) && (
                   <span className="cal-dot" />
@@ -162,7 +170,7 @@ export function Scheduler({ onToday }: { onToday?: () => void }) {
         <div className="empty-day">
           <div>Nothing on {isToday ? 'today' : DAY_LABEL[selectedKey]}.</div>
           {nextBusy && !adding && (
-            <button className="next-up" onClick={() => setSelected(nextBusy.date)}>
+            <button className="next-up" onClick={() => onSelectDate(nextBusy.date)}>
               Next: {DAY_LABEL[dayKeyOf(nextBusy.date)]} · {nextBusy.count} thing
               {nextBusy.count > 1 ? 's' : ''} →
             </button>

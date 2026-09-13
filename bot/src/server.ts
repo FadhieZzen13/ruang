@@ -83,6 +83,7 @@ export function startServer(send: Sender, groupName: (jid: string) => string): v
           pace: d.pace,
           awaiting: d.awaiting,
           groupName: d.groupJid ? groupName(d.groupJid) || d.groupJid : null,
+          askedBy: d.askedBy,
           sessions: d.sessions,
         }))
         return end(res, 200, { drafts })

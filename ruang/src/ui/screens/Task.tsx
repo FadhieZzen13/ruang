@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fmt, getActivities, renameActivities, useAppState } from '../../app/store'
-import { saveTask, useTasks } from '../../app/tasks'
-import { acceptPlan } from '../../app/plan-actions'
+import { removeTask, saveTask, setTaskStatus, useTasks } from '../../app/tasks'
+import { acceptPlan, unacceptPlan } from '../../app/plan-actions'
 import { describeSessions } from '../../app/plan-agent'
 import { downloadFile } from '../../app/download'
 import { getGroups, publishPlan, sayToGroup, type BotGroup } from '../../app/bot'
@@ -47,7 +47,7 @@ const BUDGETS = [120, 240, 360, 480]
 const EFFORT_LABELS = ['1–2 hrs', 'Half a day', 'Full day', '2+ days']
 
 export function Task() {
-  const { activities } = useAppState()
+  const { activities, name } = useAppState()
   const tasks = useTasks()
   const [phase, setPhase] = useState<Phase>('list')
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
@@ -155,7 +155,15 @@ export function Task() {
     if (slots.length === 0) return
     try {
       const { steps, provider } = await describeSessions(
-        { title: t, deadline: dl, totalMinutes: mins, pace: p },
+        {
+          title: t,
+          deadline: dl,
+          totalMinutes: mins,
+          pace: p,
+          course: course.trim() || undefined,
+          deadlineTime,
+          name: name.trim() || undefined,
+        },
         slots,
       )
       setSessions((cur) =>
@@ -542,8 +550,13 @@ function TaskCard({ task, onShare }: { task: Task; onShare: () => void }) {
     setEditingTitle(false)
   }
 
+  const remove = () => {
+    if (planned) unacceptPlan(task)
+    removeTask(task.id)
+  }
+
   return (
-    <div className="task-card2" style={{ background: tint.wash, borderColor: 'transparent' }}>
+    <div className={`task-card2 ${task.status === 'done' ? 'completed' : ''}`} style={{ background: tint.wash, borderColor: 'transparent' }}>
       <div className="tc-top">
         <TagPill tint={tint} />
         <span className="tc-due">
@@ -575,10 +588,20 @@ function TaskCard({ task, onShare }: { task: Task; onShare: () => void }) {
       )}
       <Progress pct={pct} color={tint.ink} />
       <div className="tc-foot">
-        <span className="tc-done">{pct}% done</span>
+        <span className="tc-done">{task.status === 'done' ? 'Completed' : `${pct}% done`}</span>
         <span className="count-pill" style={{ background: tint.pill, color: tint.ink }}>
           {countdownLabel(task)}
         </span>
+      </div>
+      <div className="task-card-actions">
+        {task.status !== 'done' && (
+          <button className="btn-link" onClick={() => setTaskStatus(task.id, 'done')}>
+            Mark complete
+          </button>
+        )}
+        <button className="btn-link danger-link" onClick={remove}>
+          Delete
+        </button>
       </div>
       {planned && (
         <button className="btn-link" style={{ marginTop: 10 }} onClick={onShare}>

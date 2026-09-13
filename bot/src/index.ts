@@ -2,7 +2,7 @@ import './env.js'
 import { detect } from './detect.js'
 import { isBusy, nextEvening, conflictReason, hasSchedule } from './schedule.js'
 import { addPending, listPending, postMessage, postVerdict, type Pending, type Decision } from './decisions.js'
-import { routeOwnerLine, sharePlan } from './plan-chat.js'
+import { planFromGroup, routeOwnerLine, sharePlan } from './plan-chat.js'
 import { isPlanRequest } from './plan-parse.js'
 import { connect, type IncomingMessage, type Wa } from './wa.js'
 import { startControl, renderPending } from './control.js'
@@ -19,15 +19,11 @@ const nextId = () => `a${++seq}`
 // and SURFACE it three ways (terminal + WhatsApp DM + the app's inbox) — but
 // never reply. Posting only happens later, on your explicit approval.
 function onMessage(m: IncomingMessage): void {
-  // Someone else asking Ruang to plan. You chose that only YOUR messages start a
-  // plan, so this is ignored on purpose — but say so, because a silent drop is
-  // indistinguishable from a broken bot.
+  // A plan request in a watched group. Yours already went to the owner channel,
+  // so drop it here. A groupmate's is group work — which is your work — so it
+  // becomes your draft, planned against your week, waiting in your app.
   if (isPlanRequest(m.body)) {
-    logger.warn(
-      { author: m.author, group: m.groupName },
-      `ignored "${m.body}" — only your own messages can ask for a plan. ` +
-        `If that was you, you sent it from a different account than the one Ruang is linked to.`,
-    )
+    if (!m.fromMe) void onGroupPlanRequest(m)
     return
   }
 
@@ -49,6 +45,17 @@ function onMessage(m: IncomingMessage): void {
   addPending(p) // parked, not sent
   renderPending(p.id) // terminal
   wa?.sendToOwner(dmFor(p)).catch(() => {}) // WhatsApp DM (RULE 4: always fires)
+}
+
+// Someone in the group named a piece of shared work. Ruang sizes it against
+// YOUR week and parks it — it never answers the group, so the person who asked
+// learns nothing about your calendar. You refine and share it or you don't.
+async function onGroupPlanRequest(m: IncomingMessage): Promise<void> {
+  const reply = planFromGroup(m.body, m.groupJid, m.author)
+  const said = `📌 ${m.author} asked *${m.groupName}* to plan this. Group work is your work:\n\n${reply.text}`
+  logger.info({ author: m.author, group: m.groupName, draft: reply.draftId }, 'group plan request')
+  renderPlan(said)
+  await wa.sendToOwner(said).catch(() => {})
 }
 
 function dmFor(p: Pending): string {

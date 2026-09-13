@@ -55,6 +55,12 @@ export function FromWhatsApp({ onOpen }: { onOpen: (draft: BotDraft) => void }) 
             <span className="ghost grey">{d.id}</span>
           </div>
 
+          {d.askedBy && (
+            <div className="task-card-meta">
+              {d.askedBy} asked{d.groupName ? ` in ${d.groupName}` : ''} &middot; group work
+            </div>
+          )}
+
           {d.awaiting === 'deadline' ? (
             <>
               <div className="task-card-meta">Ruang asked: when&rsquo;s it due?</div>

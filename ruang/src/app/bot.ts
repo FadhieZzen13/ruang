@@ -14,6 +14,23 @@ const BOT_URL = (env.VITE_BOT_URL || '/bot').replace(/\/$/, '')
 const BOT_TOKEN = env.VITE_BOT_TOKEN || ''
 const AUTH_HEADERS: Record<string, string> = BOT_TOKEN ? { Authorization: `Bearer ${BOT_TOKEN}` } : {}
 
+// The /bot proxy only exists under `npm run dev`. On a static host with an SPA
+// catch-all (Vercel's rewrite to /index.html) every bot call answers 200 with
+// HTML instead of 404, so `res.ok` passes and the JSON parse throws — failing
+// identically to "bot offline". That silence is why a deploy with no bot route
+// looks exactly like a bot with nothing to say, so name it once, loudly.
+async function asJson(res: Response): Promise<Record<string, unknown> | null> {
+  if (!res.ok) return null
+  if (!res.headers.get('content-type')?.includes('application/json')) {
+    console.warn(
+      `[ruang] ${res.url} returned ${res.headers.get('content-type')}, not JSON — ` +
+        `the bot is not reachable at "${BOT_URL}". Set VITE_BOT_URL to its https origin.`,
+    )
+    return null
+  }
+  return (await res.json()) as Record<string, unknown>
+}
+
 export interface PendingInvite {
   id: string
   groupName: string
@@ -45,9 +62,8 @@ export async function syncSchedule(activities: Activity[]): Promise<void> {
 // null = bot unreachable (offline); [] = up but nothing waiting.
 export async function getPending(): Promise<PendingInvite[] | null> {
   try {
-    const res = await fetch(`${BOT_URL}/pending`, { headers: AUTH_HEADERS })
-    if (!res.ok) return null
-    const data = await res.json()
+    const data = await asJson(await fetch(`${BOT_URL}/pending`, { headers: AUTH_HEADERS }))
+    if (!data) return null
     return (data.pending ?? []) as PendingInvite[]
   } catch {
     return null
@@ -63,9 +79,8 @@ export interface BotGroup {
 
 export async function getGroups(): Promise<BotGroup[] | null> {
   try {
-    const res = await fetch(`${BOT_URL}/groups`, { headers: AUTH_HEADERS })
-    if (!res.ok) return null
-    const data = await res.json()
+    const data = await asJson(await fetch(`${BOT_URL}/groups`, { headers: AUTH_HEADERS }))
+    if (!data) return null
     return (data.groups ?? []) as BotGroup[]
   } catch {
     return null
@@ -82,14 +97,16 @@ export interface BotDraft {
   pace: 'quick' | 'relaxed'
   awaiting: 'deadline' | null
   groupName: string | null
+  // Set when a groupmate named the work rather than you. Group work is your
+  // work, so the draft is yours either way — this only says where it came from.
+  askedBy: string | null
   sessions: { date: string; start: number; end: number; note: string }[]
 }
 
 export async function getDrafts(): Promise<BotDraft[] | null> {
   try {
-    const res = await fetch(`${BOT_URL}/drafts`, { headers: AUTH_HEADERS })
-    if (!res.ok) return null
-    const data = await res.json()
+    const data = await asJson(await fetch(`${BOT_URL}/drafts`, { headers: AUTH_HEADERS }))
+    if (!data) return null
     return (data.drafts ?? []) as BotDraft[]
   } catch {
     return null
@@ -105,9 +122,8 @@ export async function tellRuang(text: string): Promise<string | null> {
       headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
       body: JSON.stringify({ text }),
     })
-    if (!res.ok) return null
-    const data = await res.json()
-    return typeof data.reply === 'string' ? data.reply : null
+    const data = await asJson(res)
+    return typeof data?.reply === 'string' ? data.reply : null
   } catch {
     return null
   }
@@ -128,9 +144,8 @@ export async function publishPlan(
       headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
       body: JSON.stringify({ slug, title, ics }),
     })
-    if (!res.ok) return null
-    const data = await res.json()
-    return typeof data.path === 'string' ? `${BOT_URL}${data.path}` : null
+    const data = await asJson(res)
+    return typeof data?.path === 'string' ? `${BOT_URL}${data.path}` : null
   } catch {
     return null
   }

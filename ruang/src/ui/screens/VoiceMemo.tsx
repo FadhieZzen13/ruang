@@ -9,6 +9,7 @@ import {
   fmt,
 } from '../../app/store'
 import { parseMemo } from '../../domain/memo'
+import { parseDay, parseTime } from '../../domain/listener'
 import { isPlanRequest, parseDeadline, parseRequest } from '../../domain/plan-parse'
 import { setPlanDraft } from '../../app/plan-draft'
 import { negotiate, expandRecurring, type Negotiation, type ResolveOption } from '../../domain/scheduling'
@@ -155,12 +156,37 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
   // The user answered a question (missing info, or a custom "something else").
   const answer = (reply: string) => {
+    if (clarifyMode === 'custom' && plan?.action === 'create') {
+      reviseCreate(reply)
+      return
+    }
     setClarifyText('')
     const combined =
       clarifyMode === 'custom'
         ? `${context.current}. Actually, I want: ${reply}`
         : `${context.current} ${reply}`
     understand(combined.trim())
+  }
+
+  const reviseCreate = (reply: string) => {
+    if (!plan) return
+    const day = parseDay(reply) ?? plan.day
+    const start = parseTime(reply) ?? plan.start
+    const rename = reply.match(
+      /\b(?:rename|name|call|title)\s+(?:it\s+)?(?:to|as)?\s+(.+?)(?=\s+(?:on|at)\b|$)/i,
+    )
+    const title = rename?.[1]?.trim() || plan.title
+    setPlan({
+      ...plan,
+      title,
+      day,
+      start,
+      end: start + DURATION,
+      negotiation: negotiate(getActivities(), day, start, DURATION),
+    })
+    setText(`${title} ${DAY_LABEL[day]} ${fmt(start)}`)
+    setClarifyText('')
+    setPhase('propose')
   }
 
   function planFromAction(a: RawAction, source: 'agent' | 'offline'): Plan {
@@ -203,7 +229,7 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
   const placeNew = (p: Plan, day: Day, start: number) => {
     const entries = expandRecurring(
-      { title: p.title, day, start, end: start + DURATION, kind: 'activity', locked: false, description: p.description, recurrence: p.recurrence },
+      { title: p.title, day, start, end: start + DURATION, kind: 'activity', locked: false, description: p.description, recurrence: 'once' },
       (_d, i) => `m${Date.now()}${i}`,
     )
     addActivities(entries)
@@ -371,11 +397,14 @@ function Answer({
 
       {isCreate && (
         <div className="answer-details">
+          <input
+            className="note-input"
+            value={plan.title}
+            onChange={(e) => onPatch({ title: e.target.value })}
+            placeholder="Assignment or activity name"
+            aria-label="Assignment or activity name"
+          />
           <input className="note-input" value={plan.description} onChange={(e) => onPatch({ description: e.target.value })} placeholder="Add a note… (optional)" aria-label="Description" />
-          <button className={`recur-toggle ${plan.recurrence === 'weekly' ? 'on' : ''}`} onClick={() => onPatch({ recurrence: plan.recurrence === 'weekly' ? 'once' : 'weekly' })} aria-pressed={plan.recurrence === 'weekly'}>
-            <span className="recur-icon" aria-hidden>↻</span>
-            {plan.recurrence === 'weekly' ? 'Repeats weekly' : 'Repeat weekly?'}
-          </button>
         </div>
       )}
 

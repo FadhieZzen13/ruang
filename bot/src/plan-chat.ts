@@ -32,6 +32,10 @@ export interface Draft {
   minutes: number
   pace: Pace
   groupJid: string | null // where it came from, and where it'd be shared
+  // Who asked, when it wasn't you. A group project's work lands on your plate
+  // whoever names it, so the draft is yours either way — this is just so the
+  // app can say where it came from.
+  askedBy: string | null
   sessions: PlanSession[]
   awaiting: 'deadline' | null
 }
@@ -98,7 +102,12 @@ export interface Reply {
 }
 
 // Someone (you) asked for a plan. Returns what to say back in the DM.
-export function startPlan(body: string, fromGroup: string | null, now = new Date()): Reply {
+export function startPlan(
+  body: string,
+  fromGroup: string | null,
+  now = new Date(),
+  askedBy: string | null = null,
+): Reply {
   const req = parseRequest(body, now)
   const title = req.title || 'this'
   const draft: Draft = {
@@ -108,6 +117,7 @@ export function startPlan(body: string, fromGroup: string | null, now = new Date
     minutes: req.minutes ?? DEFAULT_MINUTES,
     pace: req.pace ?? 'relaxed',
     groupJid: targetGroup(fromGroup),
+    askedBy,
     sessions: [],
     awaiting: req.deadline ? null : 'deadline',
   }
@@ -204,6 +214,20 @@ export async function sharePlan(
   drafts.delete(draft.id)
   logger.info({ id: draft.id, slug }, 'plan shared to group (on your tap)')
   return `Shared. The group has the schedule and the link.`
+}
+
+// A groupmate asked Ruang to plan something in a watched group. A group
+// project's work is YOUR work too, so this becomes your draft: planned against
+// your week, surfaced in your app, answered and shared only by you. Nothing
+// goes back to the group, and only plan requests get this far — ordinary group
+// chatter never reaches the planner.
+export function planFromGroup(
+  body: string,
+  groupJid: string,
+  author: string,
+  now = new Date(),
+): Reply {
+  return startPlan(body, groupJid, now, author)
 }
 
 // Route a line from you to the right part of the conversation. Returns null
