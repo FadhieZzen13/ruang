@@ -1,11 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useAppState,
   fmt,
   addActivity,
   removeActivity,
-  clearActivities,
-  loadDemo,
   setName,
 } from '../../app/store'
 import { DAY_LABEL, type ActivityKind, type Day } from '../../domain/types'
@@ -21,15 +19,13 @@ import { activitiesOn, isoDate, occursOn } from '../../domain/occurrence'
 
 const KINDS: ActivityKind[] = ['class', 'meeting', 'activity', 'work']
 
-export function Scheduler() {
+export function Scheduler({ onToday }: { onToday?: () => void }) {
   const { activities, name } = useAppState()
   const today = useMemo(() => new Date(), [])
   const [editingName, setEditingName] = useState(false)
   const [view, setView] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [selected, setSelected] = useState(today)
   const [adding, setAdding] = useState(false)
-  const [confirmClear, setConfirmClear] = useState(false)
-  const armed = useRef(false)
 
   const cells = useMemo(() => monthMatrix(view), [view])
   // Two sets, because a day can be busy for two different reasons: something
@@ -59,30 +55,11 @@ export function Scheduler() {
     return null
   }, [selected, activities])
 
-  // Two-tap clear: first tap arms, second tap wipes. Auto-disarms after 4s.
-  // Uses a ref so the armed state is read synchronously (survives fast taps).
-  const clearAll = () => {
-    if (activities.length === 0) return
-    if (armed.current) {
-      clearActivities()
-      setAdding(false)
-      armed.current = false
-      setConfirmClear(false)
-    } else {
-      armed.current = true
-      setConfirmClear(true)
-      setTimeout(() => {
-        armed.current = false
-        setConfirmClear(false)
-      }, 4000)
-    }
-  }
-
   return (
     <div>
-      <div className="appbar">
+      <div className="sched-head">
         <div>
-          <div className="eyebrow">Your week</div>
+          <div className="eyebrow">Schedule</div>
           {editingName ? (
             <NameEditor
               value={name}
@@ -92,18 +69,19 @@ export function Scheduler() {
               }}
             />
           ) : (
-            <h1 onClick={() => setEditingName(true)} title="Tap to rename">
+            <h1 className="sched-title" onClick={() => setEditingName(true)} title="Tap to rename">
               {name}
             </h1>
           )}
         </div>
-        <div className="profile-actions">
-          <button onClick={() => { loadDemo(); armed.current = false; setConfirmClear(false) }}>Demo</button>
-          <button className={confirmClear ? 'danger' : ''} onClick={clearAll}>
-            {confirmClear ? 'Sure?' : 'Clear'}
-          </button>
-        </div>
       </div>
+
+      {onToday && (
+        <div className="view-toggle full">
+          <button onClick={onToday}>Today</button>
+          <button className="on">Month</button>
+        </div>
+      )}
 
       <div className="cal">
         <div className="cal-head">

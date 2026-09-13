@@ -1,58 +1,91 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fmt, getActivities, useAppState } from '../../app/store'
-import { removeTask, saveTask, useTasks } from '../../app/tasks'
+import { fmt, getActivities, renameActivities, useAppState } from '../../app/store'
+import { saveTask, useTasks } from '../../app/tasks'
 import { acceptPlan } from '../../app/plan-actions'
 import { describeSessions } from '../../app/plan-agent'
 import { downloadFile } from '../../app/download'
 import { getGroups, publishPlan, sayToGroup, type BotGroup } from '../../app/bot'
 import type { Task, TaskSession } from '../../domain/task'
 import {
+  countdownLabel,
+  deadlineMinutes,
   fallbackSteps,
   hoursLabel,
   makeSession,
   planText,
+  progressPercent,
   sessionFromSlot,
-  totalPlannedMinutes,
+  shortTitle,
 } from '../../domain/task'
 import { maxPerDayFor, planSessions, shapeFor, type DateSlot, type Pace } from '../../domain/planner'
 import { busyOnDate, dateFromIso, isoDate, shortDateLabel, weekdayOfIso } from '../../domain/occurrence'
+import { courseTint } from '../../domain/course'
 import { SHARE_PREFIX, encodePlan } from '../../domain/share-link'
 import { takePlanDraft } from '../../app/plan-draft'
 import { FromWhatsApp } from './FromWhatsApp'
 import type { BotDraft } from '../../app/bot'
 import { icsFilename, planToIcs, slugify } from '../../domain/ics'
+import { termWeek, TERM_WEEKS } from '../../app/dates'
+import {
+  CalendarIcon,
+  CheckIcon,
+  ChevronLeft,
+  ClockBadge,
+  ClockIcon,
+  Progress,
+  ScreenShell,
+  Segmented,
+  StarIcon,
+  TagPill,
+  WizardTop,
+} from '../bits'
 
 type Phase = 'list' | 'capture' | 'pace' | 'propose' | 'shared'
+type Scope = 'week' | 'month' | 'year'
 
 const BUDGETS = [120, 240, 360, 480]
+const EFFORT_LABELS = ['1–2 hrs', 'Half a day', 'Full day', '2+ days']
 
 export function Task() {
   const { activities } = useAppState()
   const tasks = useTasks()
   const [phase, setPhase] = useState<Phase>('list')
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
 
   // Draft being built. Held here rather than in the store so nothing is saved
   // until the plan is accepted.
   const [title, setTitle] = useState('')
+  const [course, setCourse] = useState('')
   const [deadline, setDeadline] = useState('')
+  const [deadlineTime, setDeadlineTime] = useState('23:59')
   const [budget, setBudget] = useState(240)
-  const [pace, setPace] = useState<Pace>('relaxed')
+  const [pace, setPace] = useState<Pace>('quick')
   const [sessions, setSessions] = useState<TaskSession[]>([])
   const [source, setSource] = useState<string>('offline')
   const [current, setCurrent] = useState<Task | null>(null)
+  // "Edit all" opens every block's inline editor at once.
+  const [editAll, setEditAll] = useState(false)
 
   const today = useMemo(() => new Date(), [])
   const todayIso = isoDate(today)
 
+  const go = (next: Phase, direction: 'fwd' | 'back' = 'fwd') => {
+    setDir(direction)
+    setPhase(next)
+  }
+
   const reset = () => {
     setTitle('')
+    setCourse('')
     setDeadline('')
+    setDeadlineTime('23:59')
     setBudget(240)
-    setPace('relaxed')
+    setPace('quick')
     setSessions([])
     setCurrent(null)
     setSource('offline')
-    setPhase('list')
+    setEditAll(false)
+    go('list', 'back')
   }
 
   // Voice may have handed us a request already understood ("plan the lab report
@@ -90,7 +123,8 @@ export function Task() {
     setSessions(slots.map((s, i) => sessionFromSlot(s, steps[i] ?? 'Work on it')))
     setSource('offline')
     setPace(withPace)
-    setPhase('propose')
+    setEditAll(false)
+    go('propose')
     void fillNotes(slots, t, dl, mins, withPace)
   }
 
@@ -106,7 +140,7 @@ export function Task() {
     setPace(d.pace)
     setSessions(d.sessions.map((s) => makeSession(s.date, s.start, s.end - s.start, s.note)))
     setSource('from WhatsApp')
-    setPhase('propose')
+    go('propose')
   }
 
   // Ask the model what each sitting is for, and swap the lines in when they
@@ -137,96 +171,185 @@ export function Task() {
     const task: Task = {
       id: `t${Date.now()}`,
       title,
+      course: course.trim() || undefined,
       deadline,
+      deadlineTime,
       pace,
       totalMinutes: budget,
       sessions,
-      status: 'draft',
+      status: 'planned',
       createdAt: new Date().toISOString(),
     }
     setCurrent(acceptPlan(task))
-    setPhase('shared')
+    go('shared')
   }
 
   if (phase === 'capture') {
     const ready = title.trim().length > 0 && deadline >= todayIso
     return (
-      <Screen title="New task" eyebrow="Build a plan">
-        <div className="task-form">
-          <input
-            className="add-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What needs doing?"
-            aria-label="Task"
-            autoFocus
-          />
-          <label className="task-field">
-            <span className="task-field-label">Due</span>
+      <ScreenShell>
+        <WizardTop back="Tasks" step="Step 1 of 3" onBack={reset} />
+        <h1 className="wizard-h1">What do you need to get done?</h1>
+        <p className="wizard-sub">Ruang will fit it into your week.</p>
+
+        <div className={`wizard-body step-anim ${dir === 'back' ? 'back' : ''}`}>
+          <label className="field">
+            <span className="field-label">Task name</span>
             <input
-              type="date"
-              value={deadline}
-              min={todayIso}
-              onChange={(e) => setDeadline(e.target.value)}
-              aria-label="Deadline"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Thesis Introduction Draft"
+              aria-label="Task name"
+              autoFocus
+            />
+            <span className="field-hint">e.g. Finish problem set, write lit review section</span>
+          </label>
+
+          <label className="field">
+            <span className="field-label">Course or label (optional)</span>
+            <input
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+              placeholder="ENG 401"
+              aria-label="Course or label"
             />
           </label>
 
-          <div className="task-field-label">How long will it take?</div>
-          <div className="kind-row">
-            {BUDGETS.map((b) => (
-              <button
-                key={b}
-                className={`kind-pill ${budget === b ? 'on' : ''}`}
-                onClick={() => setBudget(b)}
-                aria-pressed={budget === b}
-              >
-                {hoursLabel(b)}
-              </button>
-            ))}
+          <div className="field">
+            <span className="field-label">Deadline</span>
+            <div className="field-split">
+              <div className="field-half">
+                <input
+                  type="date"
+                  value={deadline}
+                  min={todayIso}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  aria-label="Deadline date"
+                />
+                <span className="field-icon"><CalendarIcon /></span>
+              </div>
+              <div className="field-half narrow">
+                <input
+                  type="time"
+                  value={deadlineTime}
+                  onChange={(e) => setDeadlineTime(e.target.value)}
+                  aria-label="Deadline time"
+                />
+                <span className="field-icon"><ClockIcon /></span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="answer-actions">
-          <button className="btn btn-primary btn-block" disabled={!ready} onClick={() => setPhase('pace')}>
-            Next
+        <div className="docked">
+          <button className="btn btn-primary btn-block" disabled={!ready} onClick={() => go('pace')}>
+            Next →
           </button>
         </div>
-        <button className="btn-link centered" onClick={reset}>
-          Never mind
-        </button>
-      </Screen>
+      </ScreenShell>
     )
   }
 
   if (phase === 'pace') {
+    const tint = courseTint(course)
     return (
-      <Screen title="How do you want to do it?" eyebrow={title}>
-        <div className="neg-options">
-          <button className="neg-option" onClick={() => build('quick')}>
-            <span className="neg-title">Finish it quick</span>
-            <span className="neg-sub">Fewer, longer sittings — starting as soon as you're free</span>
-          </button>
-          <button className="neg-option" onClick={() => build('relaxed')}>
-            <span className="neg-title">Take your time</span>
-            <span className="neg-sub">
-              Shorter sittings, spread out to {shortDateLabel(deadline)}
+      <ScreenShell>
+        <WizardTop back="Back" step="Step 2 of 3" onBack={() => go('capture', 'back')} />
+        <h1 className="wizard-h1">How do you want to approach it?</h1>
+        <p className="wizard-sub">This shapes how Ruang slots sessions into your week.</p>
+
+        <div className={`wizard-body step-anim ${dir === 'back' ? 'back' : ''}`}>
+          {/* The recap keeps step 1's input visible so nothing feels lost
+              crossing steps. */}
+          <div className="context-card">
+            <TagPill tint={tint} />
+            <div className="context-title">{title}</div>
+            <div className="context-sub">
+              Due {shortDateLabel(deadline)} · {fmt(toMinutes(deadlineTime) ?? 23 * 60 + 59)}
+            </div>
+          </div>
+
+          <button
+            className={`choice ${pace === 'quick' ? 'on' : ''}`}
+            onClick={() => setPace('quick')}
+            aria-pressed={pace === 'quick'}
+          >
+            {pace === 'quick' && <span className="choice-check"><CheckIcon /></span>}
+            <span className="choice-badge" style={{ background: '#f4e4dd' }}>
+              <StarIcon color="#c4694a" />
+            </span>
+            <span className="choice-body">
+              <span className="choice-title">Finish it quickly</span>
+              <span className="choice-desc">Ruang blocks longer sessions early — done before you know it.</span>
+              <span className="choice-bars" aria-hidden>
+                <span style={{ width: '100%', background: '#c4694a' }} />
+                <span style={{ width: '70%', background: '#e0a48e' }} />
+                <span style={{ width: '42%', background: '#efd0c4' }} />
+              </span>
+              <span className="choice-bars-cap">Heavy early · lighter later</span>
             </span>
           </button>
+
+          <button
+            className={`choice ${pace === 'relaxed' ? 'on' : ''}`}
+            onClick={() => setPace('relaxed')}
+            aria-pressed={pace === 'relaxed'}
+          >
+            {pace === 'relaxed' && <span className="choice-check"><CheckIcon /></span>}
+            <span className="choice-badge" style={{ background: '#ece5db' }}>
+              <ClockBadge color="#a08a6e" />
+            </span>
+            <span className="choice-body">
+              <span className="choice-title">Take my time</span>
+              <span className="choice-desc">Even sessions spread over the week — less pressure, same result.</span>
+              <span className="choice-bars" aria-hidden>
+                <span style={{ width: '80%', background: '#7a8b6f' }} />
+                <span style={{ width: '80%', background: '#a3b199' }} />
+                <span style={{ width: '80%', background: '#c8d2c0' }} />
+              </span>
+              <span className="choice-bars-cap">Even · same result</span>
+            </span>
+          </button>
+
+          <div className="field">
+            <span className="field-label">Estimated effort</span>
+            <div className="effort-row">
+              {BUDGETS.map((b, i) => (
+                <button
+                  key={b}
+                  className={budget === b ? 'on' : ''}
+                  onClick={() => setBudget(b)}
+                  aria-pressed={budget === b}
+                >
+                  {EFFORT_LABELS[i]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="answer-actions" />
-        <button className="btn-link centered" onClick={() => setPhase('capture')}>
-          Back
-        </button>
-      </Screen>
+
+        <div className="docked">
+          <button className="btn btn-primary btn-block" onClick={() => build(pace)}>
+            See proposed schedule →
+          </button>
+        </div>
+      </ScreenShell>
     )
   }
 
   if (phase === 'propose') {
     const planned = sessions.reduce((n, s) => n + (s.end - s.start), 0)
     const short = budget - planned
+    const last = sessions[sessions.length - 1]
     return (
-      <Screen title={title} eyebrow={`Due ${shortDateLabel(deadline)}`}>
+      <ScreenShell>
+        <WizardTop back="Back" step="Step 3 of 3" onBack={() => go('pace', 'back')} />
+
+        <div className="eyebrow sm" style={{ padding: '4px 20px 0' }}>
+          {course.trim() || 'Task'} · Due {shortDateLabel(deadline).toUpperCase()}
+        </div>
+        <h1 className="wizard-h1" style={{ paddingBottom: 16 }}>{title}</h1>
+
         {sessions.length === 0 ? (
           <div className="empty-day">
             <div>No free time before {shortDateLabel(deadline)}.</div>
@@ -234,13 +357,31 @@ export function Task() {
           </div>
         ) : (
           <>
-            <div className="session-list">
+            <div className="ai-banner">
+              <span className="ai-avatar">R</span>
+              <p>
+                {sessions.length} session{sessions.length === 1 ? '' : 's'} across{' '}
+                {new Set(sessions.map((s) => s.date)).size} day
+                {new Set(sessions.map((s) => s.date)).size === 1 ? '' : 's'} — each fits your free
+                gaps. Tap a block to shift it.
+              </p>
+            </div>
+
+            <div className="prop-head">
+              <span className="prop-label">Proposed blocks</span>
+              <button className="prop-edit" onClick={() => setEditAll((v) => !v)}>
+                {editAll ? 'Done editing' : 'Edit all'}
+              </button>
+            </div>
+
+            <div className="session-stack step-anim">
               {sessions.map((s, i) => (
                 <SessionRow
                   key={s.id}
                   session={s}
                   index={i}
-                  title={title}
+                  last={i === sessions.length - 1}
+                  forceEdit={editAll}
                   activities={activities}
                   siblings={sessions.filter((_, j) => j !== i)}
                   onChange={(next) => setSessions((cur) => cur.map((c, j) => (j === i ? next : c)))}
@@ -248,40 +389,38 @@ export function Task() {
               ))}
             </div>
 
-            <div className="plan-summary">
+            <div className="plan-summary" style={{ paddingTop: 14 }}>
               {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'} ·{' '}
-              {hoursLabel(planned)} · done by {shortDateLabel(sessions[sessions.length - 1]!.date)}
+              {hoursLabel(planned)}
+              {last && ` · done by ${shortDateLabel(last.date)}`}
               {short > 0 && (
                 <div className="error-line">
                   Only {hoursLabel(planned)} of {hoursLabel(budget)} fits before the deadline.
                 </div>
               )}
             </div>
-            <div className="answer-source">{source === 'offline' ? 'offline' : `via ${source}`}</div>
+            <div className="answer-source" style={{ paddingLeft: 20 }}>
+              {source === 'offline' ? 'offline' : `via ${source}`}
+            </div>
           </>
         )}
 
-        {/* Trust line sits ABOVE the commit, so it's on screen when you decide
-            rather than below the fold under it. */}
-        <div className="answer-actions">
+        <div className="docked">
           <div className="trustline">It proposes. You decide. Nothing moves on its own.</div>
           <button
             className="btn btn-primary btn-block"
             disabled={sessions.length === 0}
             onClick={accept}
           >
-            Add these to my week
+            Accept this plan
           </button>
           <div className="task-links">
             <button className="btn-link" onClick={() => build(pace === 'quick' ? 'relaxed' : 'quick')}>
               {pace === 'quick' ? 'Spread it out instead' : 'Get it over with instead'}
             </button>
-            <button className="btn-link" onClick={reset}>
-              Never mind
-            </button>
           </div>
         </div>
-      </Screen>
+      </ScreenShell>
     )
   }
 
@@ -291,17 +430,82 @@ export function Task() {
 
   // list
   return (
+    <TaskList
+      tasks={tasks}
+      onNew={() => go('capture')}
+      onDraft={openBotDraft}
+      onShare={(t) => {
+        saveTask(t)
+        setCurrent(t)
+        go('shared')
+      }}
+    />
+  )
+}
+
+function TaskList({
+  tasks,
+  onNew,
+  onShare,
+  onDraft,
+}: {
+  tasks: Task[]
+  onNew: () => void
+  onShare: (t: Task) => void
+  onDraft: (d: BotDraft) => void
+}) {
+  const [scope, setScope] = useState<Scope>('week')
+  const [asc, setAsc] = useState(true)
+  const week = termWeek()
+
+  const sorted = useMemo(() => {
+    const by = [...tasks].sort((a, b) =>
+      a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0,
+    )
+    return asc ? by : by.reverse()
+  }, [tasks, asc])
+
+  return (
     <div>
       <div className="appbar">
         <div>
-          <div className="eyebrow">Your work</div>
+          <div className="eyebrow">
+            Week {week} of {TERM_WEEKS}
+          </div>
           <h1>Tasks</h1>
         </div>
       </div>
 
-      <FromWhatsApp onOpen={openBotDraft} />
+      <FromWhatsApp onOpen={onDraft} />
 
-      {tasks.length === 0 ? (
+      <button className="plan-banner" onClick={onNew}>
+        <span className="pb-badge">+</span>
+        <span className="pb-copy">
+          <span className="pb-title">Build a plan</span>
+          <span className="pb-sub">Add a task and Ruang schedules it for you</span>
+        </span>
+      </button>
+
+      <Segmented
+        value={scope}
+        onChange={setScope}
+        options={[
+          { value: 'week', label: 'This week' },
+          { value: 'month', label: 'This month' },
+          { value: 'year', label: 'This year' },
+        ]}
+      />
+
+      <div className="scope-bar">
+        <span className="scope-count">
+          {sorted.length} task{sorted.length === 1 ? '' : 's'}
+        </span>
+        <button className="sort-btn" onClick={() => setAsc((v) => !v)}>
+          sort by due date {asc ? '↑' : '↓'}
+        </button>
+      </div>
+
+      {sorted.length === 0 ? (
         <div className="empty-day">
           <div>Nothing planned yet.</div>
           <div style={{ fontSize: 12, marginTop: 6 }}>
@@ -309,61 +513,78 @@ export function Task() {
           </div>
         </div>
       ) : (
-        <div className="session-list">
-          {tasks.map((t) => (
-            <div key={t.id} className="task-card">
-              <div className="task-card-top">
-                <span className="chip-title">{t.title}</span>
-                <button className="chip-del" onClick={() => removeTask(t.id)} aria-label="Delete task">
-                  ×
-                </button>
-              </div>
-              <div className="task-card-meta">
-                Due {shortDateLabel(t.deadline)} · {t.sessions.length}{' '}
-                {t.sessions.length === 1 ? 'session' : 'sessions'} · {hoursLabel(totalPlannedMinutes(t))}
-              </div>
-              {t.status === 'planned' && (
-                <button className="btn-link" onClick={() => { saveTask(t); setCurrent(t); setPhase('shared') }}>
-                  Share this plan
-                </button>
-              )}
-            </div>
+        <div className="task-list">
+          {sorted.map((t) => (
+            <TaskCard key={t.id} task={t} onShare={() => onShare(t)} />
           ))}
         </div>
       )}
-
-      <div className="answer-actions">
-        <button
-          className="btn btn-primary btn-block"
-          onClick={() => {
-            setPhase('capture')
-          }}
-        >
-          Build a plan
-        </button>
-      </div>
     </div>
   )
 }
 
-function Screen({
-  title,
-  eyebrow,
-  children,
-}: {
-  title: string
-  eyebrow: string
-  children: React.ReactNode
-}) {
+function TaskCard({ task, onShare }: { task: Task; onShare: () => void }) {
+  const tint = courseTint(task.course)
+  const pct = progressPercent(task)
+  const planned = task.status === 'planned' || task.status === 'done'
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [nextTitle, setNextTitle] = useState(task.title)
+
+  const rename = () => {
+    const title = nextTitle.trim()
+    if (!title || title === task.title) {
+      setNextTitle(task.title)
+      setEditingTitle(false)
+      return
+    }
+    saveTask({ ...task, title })
+    renameActivities(`t${task.id}-`, title)
+    setEditingTitle(false)
+  }
+
   return (
-    <div className="task-screen">
-      <div className="appbar">
-        <div>
-          <div className="eyebrow">{eyebrow}</div>
-          <h1>{title}</h1>
-        </div>
+    <div className="task-card2" style={{ background: tint.wash, borderColor: 'transparent' }}>
+      <div className="tc-top">
+        <TagPill tint={tint} />
+        <span className="tc-due">
+          {shortDateLabel(task.deadline)} · {fmt(deadlineMinutes(task))}
+        </span>
       </div>
-      {children}
+      {editingTitle ? (
+        <div className="tc-rename">
+          <input
+            className="note-input"
+            value={nextTitle}
+            onChange={(e) => setNextTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') rename()
+              if (e.key === 'Escape') {
+                setNextTitle(task.title)
+                setEditingTitle(false)
+              }
+            }}
+            aria-label="Assignment name"
+            autoFocus
+          />
+          <button className="btn-link" onClick={rename}>Save name</button>
+        </div>
+      ) : (
+        <button className="tc-title tc-title-button" onClick={() => setEditingTitle(true)}>
+          {task.title}
+        </button>
+      )}
+      <Progress pct={pct} color={tint.ink} />
+      <div className="tc-foot">
+        <span className="tc-done">{pct}% done</span>
+        <span className="count-pill" style={{ background: tint.pill, color: tint.ink }}>
+          {countdownLabel(task)}
+        </span>
+      </div>
+      {planned && (
+        <button className="btn-link" style={{ marginTop: 10 }} onClick={onShare}>
+          Share this plan
+        </button>
+      )}
     </div>
   )
 }
@@ -373,19 +594,22 @@ function Screen({
 function SessionRow({
   session,
   index,
-  title,
+  last,
+  forceEdit,
   activities,
   siblings,
   onChange,
 }: {
   session: TaskSession
   index: number
-  title: string
+  last: boolean
+  forceEdit?: boolean
   activities: import('../../domain/types').Activity[]
   siblings: TaskSession[]
   onChange: (next: TaskSession) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const open = editing || Boolean(forceEdit)
 
   // Against the rest of the week, and against the other sittings of this same
   // plan — dragging session 3 on top of session 2 is the likeliest clash of all.
@@ -405,22 +629,27 @@ function SessionRow({
       ? { title: 'another sitting of this plan' }
       : null
 
-  if (!editing) {
+  if (!open) {
     return (
-      <div className="chip activity session">
-        <div className="chip-body">
-          <div className="chip-time">
-            {shortDateLabel(session.date)} · {fmt(session.start)}–{fmt(session.end)}
-          </div>
-          <div className="chip-title">
-            {title} <span className="session-n">({index + 1})</span>
-          </div>
-          <div className="chip-desc">{session.note}</div>
-          {clash && <div className="error-line">Overlaps {clash.title}</div>}
+      <div className={`session2 ${last ? 'sage' : ''}`}>
+        <div className="session2-top">
+          <span className="session2-when" style={{ color: last ? '#7a8b6f' : '#c4694a' }}>
+            {shortDateLabel(session.date)} {fmt(session.start)} – {fmt(session.end)}
+          </span>
+          <span className="session2-dur">{hoursLabel(session.end - session.start)}</span>
         </div>
-        <button className="session-edit" onClick={() => setEditing(true)}>
-          Edit
-        </button>
+        <div className="session2-note">{session.note}</div>
+        <div className="session2-top">
+          <span className="session2-num">Session {index + 1}</span>
+          <button className="session2-edit" onClick={() => setEditing(true)}>
+            ✎ Edit
+          </button>
+        </div>
+        {clash && (
+          <div className="error-line" style={{ textAlign: 'left', margin: '8px 0 0' }}>
+            Overlaps {clash.title}
+          </div>
+        )}
       </div>
     )
   }
@@ -452,8 +681,18 @@ function SessionRow({
         />
       </div>
       <div className="add-row">
-        <input type="time" value={toValue(session.start)} onChange={(e) => setTime('start', e.target.value)} aria-label="Start" />
-        <input type="time" value={toValue(session.end)} onChange={(e) => setTime('end', e.target.value)} aria-label="End" />
+        <input
+          type="time"
+          value={toValue(session.start)}
+          onChange={(e) => setTime('start', e.target.value)}
+          aria-label="Start"
+        />
+        <input
+          type="time"
+          value={toValue(session.end)}
+          onChange={(e) => setTime('end', e.target.value)}
+          aria-label="End"
+        />
       </div>
       <input
         className="note-input"
@@ -498,6 +737,18 @@ function hostedSlug(task: Task, groupName?: string): string {
   return `${slugify(task.title, groupName)}-${(h >>> 0).toString(36).slice(0, 4)}`
 }
 
+function ShareIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 15V3M8 7l4-4 4 4" />
+      <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  )
+}
+
+// Post-commit confirmation + sharing. The timeline is the mockup's shape: a day
+// node per date, sessions hanging off it. Everything below is unchanged
+// plumbing — the same bot publish, calendar file and share text as before.
 function Share({ task, onDone }: { task: Task; onDone: () => void }) {
   const [groups, setGroups] = useState<BotGroup[] | null>(null)
   const [groupJid, setGroupJid] = useState('')
@@ -537,11 +788,7 @@ function Share({ task, onDone }: { task: Task; onDone: () => void }) {
       // link IS the calendar file, so a phone opens it straight into Calendar.
       if (g !== null) {
         const name = g[0]?.name
-        const url = await publishPlan(
-          hostedSlug(task, name),
-          task.title,
-          planToIcs(task),
-        )
+        const url = await publishPlan(hostedSlug(task, name), task.title, planToIcs(task))
         if (live && url) {
           setHosted(url)
           if (!editedRef.current) setMessage(shareText(task, name, absolute(url)))
@@ -549,7 +796,7 @@ function Share({ task, onDone }: { task: Task; onDone: () => void }) {
       }
       // Keep looking while the bot is unreachable. Checking once on mount means
       // a screen opened before the bot was up stays "offline" forever, even
-      // after you start it — the Invites tab polls for exactly this reason.
+      // after you start it — the Invitation tab polls for exactly this reason.
       if (g === null) timer = setTimeout(load, 3000)
     }
 
@@ -585,23 +832,55 @@ function Share({ task, onDone }: { task: Task; onDone: () => void }) {
     setStatus(res.ok ? 'Posted to the group.' : res.error ?? 'Could not post.')
   }
 
+  const last = task.sessions.length - 1
+
   return (
     <div className="task-screen">
-      <div className="appbar">
+      <div className="wizard-top">
+        <button className="back-link" onClick={onDone}>
+          <ChevronLeft /> Tasks
+        </button>
+        <button className="btn-outline-icon" onClick={share}>
+          <ShareIcon /> Share
+        </button>
+      </div>
+
+      <div className="success-row">
+        <span className="check-circle"><CheckIcon /></span>
+        Plan saved · {task.sessions.length} session{task.sessions.length === 1 ? '' : 's'} blocked
+      </div>
+
+      <div className="appbar" style={{ paddingTop: 0 }}>
         <div>
-          <div className="eyebrow">Added to your week</div>
           <h1>{task.title}</h1>
+          <div className="context-sub" style={{ marginTop: 6 }}>
+            {task.course ? `${task.course} · ` : ''}
+            Due {shortDateLabel(task.deadline)} · {fmt(deadlineMinutes(task))}
+          </div>
         </div>
       </div>
 
-      <div className="session-list">
-        {task.sessions.map((s) => (
-          <div key={s.id} className="chip activity session">
-            <div className="chip-body">
-              <div className="chip-time">
-                {shortDateLabel(s.date)} · {fmt(s.start)}–{fmt(s.end)}
+      <div className="timeline">
+        {task.sessions.map((s, i) => (
+          <div className="tl-row" key={s.id}>
+            <div className={`tl-node ${i === last ? 'sage' : 'orange'}`}>
+              <span className="tl-dow">{weekdayShort(s.date)}</span>
+              <span className="tl-date">{dateFromIso(s.date).getDate()}</span>
+            </div>
+            <div className="tl-body">
+              <div className="tl-card">
+                <div className="tl-card-top">
+                  <span
+                    className="session2-when"
+                    style={{ color: i === last ? '#7a8b6f' : '#c4694a' }}
+                  >
+                    {fmt(s.start)} – {fmt(s.end)}
+                  </span>
+                  <span className="session2-dur">{hoursLabel(s.end - s.start)}</span>
+                </div>
+                <div className="tl-card-title">{shortTitle(task.title)}</div>
+                <div className="tl-card-desc">{s.note}</div>
               </div>
-              <div className="chip-desc">{s.note}</div>
             </div>
           </div>
         ))}
@@ -676,7 +955,7 @@ function Share({ task, onDone }: { task: Task; onDone: () => void }) {
         {status && <div className="answer-source">{status}</div>}
       </div>
 
-      <div className="answer-actions">
+      <div className="docked">
         <div className="trustline">Nothing posts until you tap.</div>
         <button
           className="btn btn-primary btn-block"
@@ -690,12 +969,16 @@ function Share({ task, onDone }: { task: Task; onDone: () => void }) {
             {copied ? 'Copied' : 'Share the plan with someone'}
           </button>
           <button className="btn-link" onClick={onDone}>
-            Done
+            Alright, Thank you
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+function weekdayShort(iso: string): string {
+  return dateFromIso(iso).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
 }
 
 function toValue(minutes: number): string {

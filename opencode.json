@@ -1,7 +1,29 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "deepseek-v4-pro",
+  "model": "9router/1",
   "provider": {
+    "9router": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "9Router (Tailscale)",
+      "options": {
+        "baseURL": "http://100.118.248.47:20128/v1",
+        "apiKey": "sk-99e2f7e190a5721b-18bauv-305baef4"
+      },
+      "models": {
+        "1": {
+          "name": "1",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
     "afiq": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "AfiqStore AI Gateway",
@@ -13,11 +35,39 @@
         "deepseek-v4-pro": {
           "name": "deepseek-v4-pro",
           "limit": {
-            "context": 100000,
-            "output": 100000
+            "context": 1000000,
+            "output": 8192
+          }
+        },
+        "glm-5.3-flash": {
+          "name": "glm-5.3-flash",
+          "limit": {
+            "context": 1000000,
+            "output": 8192
+          }
+        },
+        "kimi-k3": {
+          "name": "kimi-k3",
+          "limit": {
+            "context": 1000000,
+            "output": 8192
+          }
+        },
+        "deepseek-v4-flash": {
+          "name": "deepseek-v4-flash",
+          "limit": {
+            "context": 1000000,
+            "output": 8192
           }
         }
       }
+    }
+  },
+  "agent": {
+    "explorer": {
+      "description": "Fast explorer subagent for codebase exploration",
+      "mode": "subagent",
+      "model": "9router/1"
     }
   }
 }

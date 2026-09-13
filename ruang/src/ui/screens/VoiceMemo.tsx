@@ -9,10 +9,11 @@ import {
   fmt,
 } from '../../app/store'
 import { parseMemo } from '../../domain/memo'
-import { isPlanRequest, parseRequest } from '../../domain/plan-parse'
+import { isPlanRequest, parseDeadline, parseRequest } from '../../domain/plan-parse'
 import { setPlanDraft } from '../../app/plan-draft'
 import { negotiate, expandRecurring, type Negotiation, type ResolveOption } from '../../domain/scheduling'
 import { DAY_LABEL, type Day, type Recurrence } from '../../domain/types'
+import { weekdayOfIso } from '../../domain/occurrence'
 
 type Phase = 'idle' | 'recording' | 'thinking' | 'clarify' | 'propose'
 const DURATION = 60
@@ -93,10 +94,17 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
     // for — size and pace have defaults you can change on the proposal.
     if (isPlanRequest(fullText)) {
       const req = parseRequest(fullText)
+      if (!req.title) {
+        context.current = fullText
+        setClarifyMode('missing')
+        setQuestion('What is the assignment name?')
+        setPhase('clarify')
+        return
+      }
       if (!req.deadline) {
         context.current = fullText
         setClarifyMode('missing')
-        const q = `When's ${req.title ? `the ${req.title.toLowerCase()}` : 'it'} due?`
+        const q = `What date is the ${req.title.toLowerCase()} due?`
         setQuestion(q)
         setPhase('clarify')
         return
@@ -125,7 +133,13 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
     // For a NEW thing, we need a day AND a time. If either is missing, ask —
     // don't silently default.
-    if (a.action === 'create' && (a.day == null || a.time == null)) {
+    if (a.action === 'create') {
+      const inferredDate = parseDeadline(fullText)
+      const inferredDay = a.day ?? (inferredDate ? weekdayOfIso(inferredDate) : null)
+      a = { ...a, day: inferredDay }
+    }
+
+    if (a.action === 'create' && isMissingCreateDetail(a)) {
       context.current = fullText
       setClarifyMode('missing')
       const q = missingQuestion(a)
@@ -407,12 +421,17 @@ function OptionRow({ opt, newTitle, requested, onPick }: { opt: ResolveOption; n
 
 // What to ask when a create is missing pieces.
 function missingQuestion(a: RawAction): string {
-  const title = a.title && a.title !== 'New activity' ? a.title : 'that'
+  const title = a.title && a.title !== 'New activity' ? a.title : 'this assignment'
+  if (!a.title || a.title === 'New activity') return 'What is the assignment name?'
   const noDay = a.day == null
   const noTime = a.time == null
-  if (noDay && noTime) return `Sure — which day and what time for ${title}?`
-  if (noDay) return `What day should I put ${title}?`
-  return `What time on ${DAY_LABEL[a.day!]} for ${title}?`
+  if (noDay) return `What date should I put ${title} on?`
+  if (noTime) return `What time on ${DAY_LABEL[a.day!]} for ${title}?`
+  return ''
+}
+
+function isMissingCreateDetail(a: RawAction): boolean {
+  return !a.title || a.title === 'New activity' || a.day == null || a.time == null
 }
 
 function verdict(plan: Plan): string {

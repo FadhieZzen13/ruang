@@ -100,6 +100,15 @@ describe('parseRequest', () => {
       pace: 'quick',
     })
   })
+
+  it('does not turn the request wording into the task title', () => {
+    expect(parseRequest('can you build a plan for me', NOW)).toEqual({
+      title: '',
+      deadline: null,
+      minutes: null,
+      pace: null,
+    })
+  })
 })
 
 describe('spoken dates and rambling titles', () => {
@@ -113,6 +122,15 @@ describe('spoken dates and rambling titles', () => {
     for (const line of ['due 20 sep', 'due sept 20', 'due 20th of september', 'due september 20th']) {
       expect(parseDeadline(line, NOW), line).toBe('2026-09-20')
     }
+  })
+
+  it('keeps the assignment title when the date is spoken conversationally', () => {
+    expect(parseRequest('plan the assignment is on the 15th of sept tuesday', NOW)).toEqual({
+      title: 'Assignment',
+      deadline: '2026-09-15',
+      minutes: null,
+      pace: null,
+    })
   })
 
   it('drops a whole transcript instead of echoing it back as a title', () => {

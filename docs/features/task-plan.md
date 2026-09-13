@@ -4,15 +4,16 @@ The Tasks tab. You name a piece of work and its deadline; Ruang finds the hours 
 
 ## Flow
 
-1. **Build a plan** → the capture step: title, a deadline (native date field), and how long the whole thing will take (chips: 2h / 4h / 6h / 8h, default 4h).
-2. **How do you want to do it?** Two choices, rendered as the same `.neg-option` rows the voice flow uses:
-   - *Finish it quick* — fewer, longer sittings (2h each), front-loaded to the earliest free slots, up to 2 a day.
-   - *Take your time* — shorter sittings (1h each), one a day, anchored evenly across the run-up so the last one lands on the deadline.
-   Same total budget either way; only the shape changes.
-3. `planner.planSessions` places the blocks in real gaps (`domain/planner.ts`). Each placement is added to a working copy before the next is placed, so two sittings can never land in the same gap. Anything that won't fit before the deadline comes back short, and the screen says so rather than quietly planning less.
-4. The blocks render immediately with deterministic notes (`task.fallbackSteps`), and `plan-agent.describeSessions` swaps in the model's per-session lines when they arrive. The plan is never gated on the LLM.
-5. **Add these to my week** → `plan-actions.acceptPlan` writes one `Activity` per session and saves the task as `planned`.
-6. The share step: *Save all N to my calendar* (one `.ics`, every sitting), *Share the plan with someone* (Web Share sheet, clipboard fallback), and *Send the plan to the group* via the bot. The last two send the same editable text — the schedule in words, then **one link carrying the whole plan**.
+1. **Build a plan — step 1 of 3** (the capture step, reskinned per `docs/UI-improvement.md`): task name (with example helper text below), an optional course/label, and a deadline split into a date field and a time field. The time defaults to `11:59 PM` silently; the course feeds the card's color. Effort moved to step 2.
+2. **Step 2 of 3 — how do you want to approach it?** A recap card of step 1's input sits at the top so nothing is lost crossing steps. Then two `.choice` cards:
+   - *Finish it quickly* — fewer, longer sittings (2h each), front-loaded to the earliest free slots, up to 2 a day.
+   - *Take my time* — shorter sittings (1h each), one a day, anchored evenly across the run-up so the last one lands on the deadline.
+   Same total budget either way; only the shape changes. Below them, the effort chip row (`1–2 hrs / Half a day / Full day / 2+ days`).
+3. **Step 3 of 3** shows the concrete plan: an AI info banner, the session cards (last one sage), and `Accept this plan`.
+4. `planner.planSessions` places the blocks in real gaps (`domain/planner.ts`). Each placement is added to a working copy before the next is placed, so two sittings can never land in the same gap. Anything that won't fit before the deadline comes back short, and the screen says so rather than quietly planning less.
+5. The blocks render immediately with deterministic notes (`task.fallbackSteps`), and `plan-agent.describeSessions` swaps in the model's per-session lines when they arrive. The plan is never gated on the LLM.
+6. **Accept this plan** → `plan-actions.acceptPlan` writes one `Activity` per session and saves the task as `planned`.
+7. The share step: *Save all N to my calendar* (one `.ics`, every sitting), *Share the plan with someone* (Web Share sheet, clipboard fallback), and *Send the plan to the group* via the bot. The last two send the same editable text — the schedule in words, then **one link carrying the whole plan**.
 
 ## Editing
 
@@ -38,7 +39,7 @@ That is not a hole in RULE 3. RULE 3 governs what the bot volunteers *about your
 - **Bot offline:** Send to the group is replaced by the same "Bot offline" treatment the Invites tab uses. Everything else — planning, accepting, calendar links, sharing — is unaffected.
 - **No room before the deadline:** the plan comes back partial, with "Only 2h of 4h fits before the deadline"; an entirely full week says so instead of proposing nothing.
 
-ponytail: a task has no progress state beyond `planned` — you tick things off by deleting the blocks, not the task.
+progress is **derived, not stored** (`task.progressPercent`): a session counts as done once its window has passed, so a task reads as ~100% as the deadline nears. There is still no manual tick — you remove work by deleting blocks. The Tasks list also shows a countdown (`task.countdownLabel`: hours when the deadline is today, days otherwise) and colors by course (`domain/course.ts`).
 
 ## The share link
 

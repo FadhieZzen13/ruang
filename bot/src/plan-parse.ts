@@ -8,7 +8,7 @@ import { isoDate } from './plan.js'
 // missing becomes ONE question, asked privately. It never guesses a deadline —
 // that's the one thing worth interrupting you for.
 
-const TRIGGER = /\b(?:ruang[,:]?\s*)?(?:plan|schedule|jadwal(?:kan|in)?|bikin\s+jadwal|atur\s+jadwal)\b/i
+const TRIGGER = /\b(?:ruang[,:]?\s*)?(?:plan|schedule|jadwal(?:kan|in)?|bikin\s+jadwal|atur\s+jadwal|build(?:\s+me)?(?:\s+a)?\s+plan)\b/i
 
 const DAY_WORDS: [Day, RegExp][] = [
   ['mon', /\b(monday|mon|senin|senen)\b/i],
@@ -123,6 +123,8 @@ export function parseTitle(body: string): string {
   const t = body
     .replace(TRIGGER, ' ')
     .replace(/\b(due|deadline|by|before|sebelum|paling lambat|dl)\b/gi, ' ')
+    .replace(/\b(?:is|it's|it is)\s+on\b/gi, ' ')
+    .replace(/\bme\b/gi, ' ')
     .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTH_RE})\\b`, 'gi'), ' ')
     .replace(new RegExp(`\\b(?:${MONTH_RE})\\s+\\d{1,2}(?:st|nd|rd|th)?\\b`, 'gi'), ' ')
     .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues|tue|wed|thurs|thu|fri|sat|sun|senin|senen|selasa|rabu|rebo|kamis|kemis|jumat|jum'at|sabtu|minggu|ahad)\b/gi, ' ')

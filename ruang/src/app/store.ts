@@ -78,6 +78,10 @@ export function removeActivity(id: string): void {
   setActivities(activities.filter((a) => a.id !== id))
 }
 
+export function renameActivities(prefix: string, title: string): void {
+  setActivities(activities.map((a) => (a.id.startsWith(prefix) ? { ...a, title } : a)))
+}
+
 // Bulk delete in one pass — otherwise dropping a 4-session plan fires four
 // separate schedule syncs to the bot.
 export function removeActivities(ids: string[]): void {

@@ -1,0 +1,350 @@
+{
+  "bot/package.json": {
+    "mtime": 1789162085.474154,
+    "seen": 1789173539.8868039,
+    "ast_hash": "7de6ff5d150587435dc9706777815355",
+    "semantic_hash": "7de6ff5d150587435dc9706777815355"
+  },
+  "bot/schedule.json": {
+    "mtime": 1789162161.660468,
+    "seen": 1789173539.886806,
+    "ast_hash": "eef213d9667e10d3b336c591e5531d05",
+    "semantic_hash": "eef213d9667e10d3b336c591e5531d05"
+  },
+  "bot/src/config.ts": {
+    "mtime": 1789166548.8519642,
+    "seen": 1789173539.886807,
+    "ast_hash": "ecd0520dfc41845d5271f40d1a21d42e",
+    "semantic_hash": "ecd0520dfc41845d5271f40d1a21d42e"
+  },
+  "bot/src/control.ts": {
+    "mtime": 1789171561.125028,
+    "seen": 1789173539.8868082,
+    "ast_hash": "e99e05a69fc4329f2c57b589693c137e",
+    "semantic_hash": "e99e05a69fc4329f2c57b589693c137e"
+  },
+  "bot/src/decisions.ts": {
+    "mtime": 1789171544.255179,
+    "seen": 1789173539.8868082,
+    "ast_hash": "e6499ac8c3943151bca65647e22c9357",
+    "semantic_hash": "e6499ac8c3943151bca65647e22c9357"
+  },
+  "bot/src/detect.ts": {
+    "mtime": 1789171536.4602754,
+    "seen": 1789173539.8868082,
+    "ast_hash": "331f85dbe250d815590bff92e0066806",
+    "semantic_hash": "331f85dbe250d815590bff92e0066806"
+  },
+  "bot/src/env.ts": {
+    "mtime": 1789162289.5977867,
+    "seen": 1789173539.886809,
+    "ast_hash": "a8bba6dc0d3b43b81c9e053dce1936b8",
+    "semantic_hash": "a8bba6dc0d3b43b81c9e053dce1936b8"
+  },
+  "bot/src/index.ts": {
+    "mtime": 1789168333.740146,
+    "seen": 1789173539.886809,
+    "ast_hash": "a87f83fe97a32585c7e2f97cfa4d0e76",
+    "semantic_hash": "a87f83fe97a32585c7e2f97cfa4d0e76"
+  },
+  "bot/src/logger.ts": {
+    "mtime": 1789162121.4025514,
+    "seen": 1789173539.886809,
+    "ast_hash": "8d70b32a5bf1fc18fb3025eec94bbea1",
+    "semantic_hash": "8d70b32a5bf1fc18fb3025eec94bbea1"
+  },
+  "bot/src/rules.ts": {
+    "mtime": 1789162111.4058535,
+    "seen": 1789173539.88681,
+    "ast_hash": "3ab3ce0614db303f1682539abf8eaefd",
+    "semantic_hash": "3ab3ce0614db303f1682539abf8eaefd"
+  },
+  "bot/src/schedule.ts": {
+    "mtime": 1789168237.078998,
+    "seen": 1789173539.88681,
+    "ast_hash": "aefe8f2e6184449aa7aade1aa2ea1652",
+    "semantic_hash": "aefe8f2e6184449aa7aade1aa2ea1652"
+  },
+  "bot/src/server.ts": {
+    "mtime": 1789171549.1887066,
+    "seen": 1789173539.88681,
+    "ast_hash": "43224fc8bc680d8de3af031c905f2c66",
+    "semantic_hash": "43224fc8bc680d8de3af031c905f2c66"
+  },
+  "bot/src/types.ts": {
+    "mtime": 1789162130.3514743,
+    "seen": 1789173539.8868108,
+    "ast_hash": "e9ce626acd18ee4efb09342631616fe3",
+    "semantic_hash": "e9ce626acd18ee4efb09342631616fe3"
+  },
+  "bot/src/wa.ts": {
+    "mtime": 1789168298.9487114,
+    "seen": 1789173539.8868108,
+    "ast_hash": "6c6764f28ae7e2a76a31c0bbaee4a4e2",
+    "semantic_hash": "6c6764f28ae7e2a76a31c0bbaee4a4e2"
+  },
+  "bot/tsconfig.json": {
+    "mtime": 1789162088.9833882,
+    "seen": 1789173539.8868108,
+    "ast_hash": "74e39d4593694404b86b8d0ae0ce434f",
+    "semantic_hash": "74e39d4593694404b86b8d0ae0ce434f"
+  },
+  "opencode.json": {
+    "mtime": 1788189439.273929,
+    "seen": 1789173539.8868108,
+    "ast_hash": "c54f49374f71149101beed3063010f8d",
+    "semantic_hash": "c54f49374f71149101beed3063010f8d"
+  },
+  "ruang/.oxlintrc.json": {
+    "mtime": 1789152713.230337,
+    "seen": 1789173539.886812,
+    "ast_hash": "029f4905006c1fffd96bc863e2d98d3e",
+    "semantic_hash": "029f4905006c1fffd96bc863e2d98d3e"
+  },
+  "ruang/package.json": {
+    "mtime": 1789152742.1473138,
+    "seen": 1789173539.886812,
+    "ast_hash": "8f0b3b00a2dd697a4bed10d6db7d4c7b",
+    "semantic_hash": "8f0b3b00a2dd697a4bed10d6db7d4c7b"
+  },
+  "ruang/src/App.tsx": {
+    "mtime": 1789171256.0555367,
+    "seen": 1789173539.886812,
+    "ast_hash": "4ab3eab4a2c294868d95314958b7e9aa",
+    "semantic_hash": "4ab3eab4a2c294868d95314958b7e9aa"
+  },
+  "ruang/src/app/agent.ts": {
+    "mtime": 1789168433.5071552,
+    "seen": 1789173539.886813,
+    "ast_hash": "90673bc3769e472c638d4d9e3e756c15",
+    "semantic_hash": "90673bc3769e472c638d4d9e3e756c15"
+  },
+  "ruang/src/app/bot.ts": {
+    "mtime": 1789171577.623949,
+    "seen": 1789173539.886813,
+    "ast_hash": "613549fc9347102b7edf8592822b7ea1",
+    "semantic_hash": "613549fc9347102b7edf8592822b7ea1"
+  },
+  "ruang/src/app/dates.ts": {
+    "mtime": 1789155725.1614416,
+    "seen": 1789173539.886813,
+    "ast_hash": "de26ece5f2ff2f6660f0d84194d632ed",
+    "semantic_hash": "de26ece5f2ff2f6660f0d84194d632ed"
+  },
+  "ruang/src/app/speech.ts": {
+    "mtime": 1789173759.6146429,
+    "seen": 1789174121.534886,
+    "ast_hash": "7ca23be9b4af80a47520c0b2bb7d4268",
+    "semantic_hash": "7ca23be9b4af80a47520c0b2bb7d4268"
+  },
+  "ruang/src/app/store.ts": {
+    "mtime": 1789171100.791588,
+    "seen": 1789173539.8868139,
+    "ast_hash": "737233a9eb42f48106c114b35a7ca427",
+    "semantic_hash": "737233a9eb42f48106c114b35a7ca427"
+  },
+  "ruang/src/data/seed.ts": {
+    "mtime": 1789171076.2162757,
+    "seen": 1789173539.8868139,
+    "ast_hash": "5a8816b5d0fe60156e2c3fa2888aef3b",
+    "semantic_hash": "5a8816b5d0fe60156e2c3fa2888aef3b"
+  },
+  "ruang/src/domain/listener.ts": {
+    "mtime": 1789173785.1262012,
+    "seen": 1789174121.5349288,
+    "ast_hash": "32a4d2199852923a5fc92a1fe1f1b292",
+    "semantic_hash": "32a4d2199852923a5fc92a1fe1f1b292"
+  },
+  "ruang/src/domain/memo.ts": {
+    "mtime": 1789173737.4474728,
+    "seen": 1789174121.5349288,
+    "ast_hash": "7a62f5eb04cfc42893331f7a80240031",
+    "semantic_hash": "7a62f5eb04cfc42893331f7a80240031"
+  },
+  "ruang/src/domain/scheduling.ts": {
+    "mtime": 1789173334.6036572,
+    "seen": 1789173539.886815,
+    "ast_hash": "28e065073d4bf02d63cda032db943da5",
+    "semantic_hash": "28e065073d4bf02d63cda032db943da5"
+  },
+  "ruang/src/domain/types.ts": {
+    "mtime": 1789171061.9937603,
+    "seen": 1789173539.886815,
+    "ast_hash": "b7fa9a75c9f2c05ddce621b5ae1ac332",
+    "semantic_hash": "b7fa9a75c9f2c05ddce621b5ae1ac332"
+  },
+  "ruang/src/main.tsx": {
+    "mtime": 1789153260.1691792,
+    "seen": 1789173539.886815,
+    "ast_hash": "a3150907ddf2842367caa98e12a33298",
+    "semantic_hash": "a3150907ddf2842367caa98e12a33298"
+  },
+  "ruang/src/ui/screens/Inbox.tsx": {
+    "mtime": 1789171594.0685017,
+    "seen": 1789173539.886816,
+    "ast_hash": "2ae3c0b01067db64e14b3fac8fbcb0c3",
+    "semantic_hash": "2ae3c0b01067db64e14b3fac8fbcb0c3"
+  },
+  "ruang/src/ui/screens/Scheduler.tsx": {
+    "mtime": 1789171180.0244348,
+    "seen": 1789173539.886816,
+    "ast_hash": "0c5801a7bc7f52aa6d56d1e034b104cf",
+    "semantic_hash": "0c5801a7bc7f52aa6d56d1e034b104cf"
+  },
+  "ruang/src/ui/screens/VoiceMemo.tsx": {
+    "mtime": 1789173247.3028398,
+    "seen": 1789173539.886816,
+    "ast_hash": "3f546ac611af55dd93a4c5481155908f",
+    "semantic_hash": "3f546ac611af55dd93a4c5481155908f"
+  },
+  "ruang/transcribe_server.py": {
+    "mtime": 1789152809.2368968,
+    "seen": 1789173539.886816,
+    "ast_hash": "67087d627f2054fb5e9c5433f7be9d12",
+    "semantic_hash": "67087d627f2054fb5e9c5433f7be9d12"
+  },
+  "ruang/tsconfig.app.json": {
+    "mtime": 1789152713.2319725,
+    "seen": 1789173539.886817,
+    "ast_hash": "5f2dafd737dea8a4ddcbb10f5113ac5a",
+    "semantic_hash": "5f2dafd737dea8a4ddcbb10f5113ac5a"
+  },
+  "ruang/tsconfig.json": {
+    "mtime": 1789152713.2320824,
+    "seen": 1789173539.886817,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "ruang/tsconfig.node.json": {
+    "mtime": 1789152713.232182,
+    "seen": 1789173539.886817,
+    "ast_hash": "f9cb81ddcea69ffdab672fc8c48dca66",
+    "semantic_hash": "f9cb81ddcea69ffdab672fc8c48dca66"
+  },
+  "ruang/vite.config.ts": {
+    "mtime": 1789159552.896526,
+    "seen": 1789173539.886818,
+    "ast_hash": "d272d5b57482f7194efcef4402e65c1a",
+    "semantic_hash": "d272d5b57482f7194efcef4402e65c1a"
+  },
+  "bot/README.md": {
+    "mtime": 1789162387.478267,
+    "seen": 1789173539.886818,
+    "ast_hash": "066891b6ddf4354773201b1b1ab67620",
+    "semantic_hash": "066891b6ddf4354773201b1b1ab67620"
+  },
+  "context.md": {
+    "mtime": 1789151523.6950111,
+    "seen": 1789173539.886818,
+    "ast_hash": "a7b57387770877b248445301a07e2752",
+    "semantic_hash": "a7b57387770877b248445301a07e2752"
+  },
+  "docs/architecture.md": {
+    "mtime": 1789156001.8155675,
+    "seen": 1789173539.886818,
+    "ast_hash": "822979b1a343f79fc571f6ab58317bf4",
+    "semantic_hash": "822979b1a343f79fc571f6ab58317bf4"
+  },
+  "docs/features/voice-memo.md": {
+    "mtime": 1789156017.287711,
+    "seen": 1789173539.8868191,
+    "ast_hash": "4f25df0826d88fd2d6a2214fc8777bd3",
+    "semantic_hash": "4f25df0826d88fd2d6a2214fc8777bd3"
+  },
+  "docs/features/whatsapp-listener.md": {
+    "mtime": 1789162399.4951947,
+    "seen": 1789173539.8868191,
+    "ast_hash": "77e7ad86c29bfb8d49bc4209db69f890",
+    "semantic_hash": "77e7ad86c29bfb8d49bc4209db69f890"
+  },
+  "docs/prd.md": {
+    "mtime": 1789152691.7141368,
+    "seen": 1789173539.88682,
+    "ast_hash": "6c93e7d321d5c0537f907673fb17f1ce",
+    "semantic_hash": "6c93e7d321d5c0537f907673fb17f1ce"
+  },
+  "group-chat-script.md": {
+    "mtime": 1789151649.0955114,
+    "seen": 1789173539.88682,
+    "ast_hash": "b1d323ef0891a6450c07fd57d27691a2",
+    "semantic_hash": "b1d323ef0891a6450c07fd57d27691a2"
+  },
+  "figma/Design System for Ruang-4.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.88682,
+    "ast_hash": "6c8c33067ea65fc1f3470568569be4ee",
+    "semantic_hash": "6c8c33067ea65fc1f3470568569be4ee"
+  },
+  "figma/Design System for Ruang-5.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.88682,
+    "ast_hash": "ea86d4a3ea32b4df8760a199e89665f5",
+    "semantic_hash": "ea86d4a3ea32b4df8760a199e89665f5"
+  },
+  "figma/Design System for Ruang-6.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.886821,
+    "ast_hash": "452eff4086e3cb60cb4214316c2b0d55",
+    "semantic_hash": "452eff4086e3cb60cb4214316c2b0d55"
+  },
+  "figma/Design System for Ruang-7.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.886821,
+    "ast_hash": "4f8d2bc29608ecb7b0b8543832e20375",
+    "semantic_hash": "4f8d2bc29608ecb7b0b8543832e20375"
+  },
+  "figma/Design System for Ruang-8.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.886821,
+    "ast_hash": "8fe12897bf1b8f6a7fb83f528621ba90",
+    "semantic_hash": "8fe12897bf1b8f6a7fb83f528621ba90"
+  },
+  "figma/Design System for Ruang.svg": {
+    "mtime": 1789150790.0,
+    "seen": 1789173539.886822,
+    "ast_hash": "ba3a3685fbcae91f670e4d756d8e9630",
+    "semantic_hash": "ba3a3685fbcae91f670e4d756d8e9630"
+  },
+  "docs/decisions.md": {
+    "mtime": 1789153685.40734,
+    "seen": 1789174121.5351439,
+    "ast_hash": "fe4fa33847c1a50ebc471bb6ccf66c21",
+    "semantic_hash": "fe4fa33847c1a50ebc471bb6ccf66c21"
+  },
+  "docs/design.md": {
+    "mtime": 1789155976.5000308,
+    "seen": 1789174121.535145,
+    "ast_hash": "79bcb496d5f4dafa30ca34c95d9eeda6",
+    "semantic_hash": "79bcb496d5f4dafa30ca34c95d9eeda6"
+  },
+  "docs/features/scheduler.md": {
+    "mtime": 1789161832.9763482,
+    "seen": 1789174121.535145,
+    "ast_hash": "9db156b2759c2696934394a47356252d",
+    "semantic_hash": "9db156b2759c2696934394a47356252d"
+  },
+  "docs/requirements.md": {
+    "mtime": 1789152774.1062,
+    "seen": 1789174121.535146,
+    "ast_hash": "af0b2e3164faab8ba786fff09a638b43",
+    "semantic_hash": "af0b2e3164faab8ba786fff09a638b43"
+  },
+  "docs/routes.md": {
+    "mtime": 1789155983.894071,
+    "seen": 1789174121.535146,
+    "ast_hash": "037e4b463838de874cc6ae60c683c751",
+    "semantic_hash": "037e4b463838de874cc6ae60c683c751"
+  },
+  "ruang/README.md": {
+    "mtime": 1789156042.1567774,
+    "seen": 1789174121.535147,
+    "ast_hash": "ecc9130e08e4f9720196c04043a83174",
+    "semantic_hash": "ecc9130e08e4f9720196c04043a83174"
+  },
+  "ruang/index.html": {
+    "mtime": 1789153361.2791667,
+    "seen": 1789174121.535147,
+    "ast_hash": "a14c49881acf8127cc849d114b240037",
+    "semantic_hash": "a14c49881acf8127cc849d114b240037"
+  }
+}

@@ -36,3 +36,19 @@ export function monthLabel(view: Date): string {
 export function addMonths(view: Date, delta: number): Date {
   return new Date(view.getFullYear(), view.getMonth() + delta, 1)
 }
+
+// The "WEEK 4 OF 14" counter. Nothing in the app tracks a term today, so this
+// anchors a 14-week term to a fixed Monday and counts forward. It's a demo
+// header, not a scheduling input — move TERM_START to shift the whole thing.
+export const TERM_WEEKS = 14
+const TERM_START = new Date(2026, 7, 17) // Monday 17 Aug 2026
+
+export function termWeek(today = new Date()): number {
+  const ms = startOfDay(today).getTime() - startOfDay(TERM_START).getTime()
+  const week = Math.floor(ms / (7 * 86400000)) + 1
+  return Math.min(TERM_WEEKS, Math.max(1, week))
+}
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}

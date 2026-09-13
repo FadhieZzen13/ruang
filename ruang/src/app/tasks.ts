@@ -45,12 +45,18 @@ function coerceTask(raw: unknown): Task | null {
     id: t.id,
     title: t.title,
     deadline: t.deadline,
+    deadlineTime: validTime(t.deadlineTime) ? (t.deadlineTime as string) : undefined,
+    course: typeof t.course === 'string' && t.course.trim() ? t.course.trim() : undefined,
     pace: (t.pace === 'quick' || t.pace === 'relaxed' ? t.pace : 'relaxed') as Pace,
     totalMinutes: typeof t.totalMinutes === 'number' ? t.totalMinutes : 240,
     sessions,
     status: status === 'draft' || status === 'planned' || status === 'done' ? status : 'draft',
     createdAt: typeof t.createdAt === 'string' ? t.createdAt : new Date().toISOString(),
   }
+}
+
+function validTime(v: unknown): boolean {
+  return typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v)
 }
 
 function loadTasks(): Task[] {

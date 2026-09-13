@@ -21,6 +21,12 @@ export interface Task {
   id: string
   title: string
   deadline: string // 'YYYY-MM-DD'
+  // 'HH:MM' 24h — the time-of-day the deadline falls on. Absent on older saved
+  // tasks, which then read as end-of-day.
+  deadlineTime?: string
+  // The free-text course/label the task belongs to. Colors are derived from it
+  // (domain/course.ts); it is never a scheduling input.
+  course?: string
   pace: Pace
   totalMinutes: number
   sessions: TaskSession[]
@@ -108,4 +114,69 @@ export function planText(task: Task, fmt: (m: number) => string, planUrl?: strin
 
 export function isPast(iso: string, today = new Date()): boolean {
   return dateFromIso(iso).getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+}
+
+// The deadline as minutes since midnight. Older tasks with no stored time read
+// as 11:59pm — the same silent default the capture step uses.
+export function deadlineMinutes(task: Pick<Task, 'deadlineTime'>): number {
+  const [h, m] = (task.deadlineTime ?? '23:59').split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+// "7 hrs left" when the deadline lands today, otherwise "5 days". Hours while
+// there's still a same-day countdown; days once it's a future date.
+export function countdownLabel(task: Pick<Task, 'deadline' | 'deadlineTime'>, now = new Date()): string {
+  const due = dateFromIso(task.deadline)
+  const todayIso = isoDateLocal(now)
+  if (task.deadline === todayIso) {
+    const nowMin = now.getHours() * 60 + now.getMinutes()
+    const left = deadlineMinutes(task) - nowMin
+    if (left <= 0) return 'due now'
+    const hrs = Math.max(1, Math.round(left / 60))
+    return `${hrs} hr${hrs === 1 ? '' : 's'} left`
+  }
+  const days = Math.round((due.getTime() - startOfDay(now).getTime()) / 86400000)
+  if (days <= 0) return 'today'
+  return `${days} day${days === 1 ? '' : 's'}`
+}
+
+// Progress has no stored source of truth (see docs/UI-improvement.md §5): a
+// session counts as done once its window has passed. The last session lands on
+// the deadline, so working to the wire reads as ~100%. Deterministic, and it
+// needs no new field or user gesture.
+export function progressPercent(task: Pick<Task, 'sessions'>, now = new Date()): number {
+  if (task.sessions.length === 0) return 0
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  let done = 0
+  for (const s of task.sessions) {
+    const end = dateFromIso(s.date)
+    end.setHours(0, 0, 0, 0)
+    if (end.getTime() < startOfDay(now).getTime()) done++
+    else if (isoDateLocal(now) === s.date && s.end <= nowMin) done++
+  }
+  return Math.round((done / task.sessions.length) * 100)
+}
+
+// A short form for the timeline, where the full title wraps to three lines. Not
+// a clipped string — a real abbreviation: initials for "Problem Set 4" → PS4.
+export function shortTitle(title: string): string {
+  const words = title.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= 2) return title
+  const head = words.slice(0, 2).join(' ')
+  if (head.length <= 22) return head
+  return words
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('')
+}
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function isoDateLocal(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }

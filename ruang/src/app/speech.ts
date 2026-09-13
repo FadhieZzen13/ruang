@@ -61,13 +61,19 @@ export function startListening(opts: {
 
   rec.onresult = (e: any) => {
     armSilence() // heard something — restart the silence clock
+    // Rebuild from the FULL results list every event instead of appending from
+    // resultIndex. Chrome re-delivers final results (resultIndex quirks), and
+    // append-mode turns that into "gym saturday gym saturday gym saturday".
+    // Full rescan is idempotent — duplicates become impossible.
+    let final = ''
     let interim = ''
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    for (let i = 0; i < e.results.length; i++) {
       const chunk = e.results[i][0].transcript
-      if (e.results[i].isFinal) finalText += chunk
+      if (e.results[i].isFinal) final += chunk
       else interim += chunk
     }
-    opts.onInterim((finalText + interim).trim())
+    finalText = final
+    opts.onInterim((final + interim).trim())
   }
 
   let hardError = false
