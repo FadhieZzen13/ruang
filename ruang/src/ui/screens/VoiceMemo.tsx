@@ -1,7 +1,6 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import { startListening, isSpeechSupported, type SpeechController } from '../../app/speech'
 import { proposeAction, hasAgent, type ActionKind, type ScheduleLite } from '../../app/agent'
-import { speak, stopSpeaking, isMuted, setMuted, ttsSupported } from '../../app/tts'
 import {
   addActivities,
   moveActivity,
@@ -45,7 +44,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
   const [typed, setTyped] = useState('')
   const [error, setError] = useState('')
   const [plan, setPlan] = useState<Plan | null>(null)
-  const [muted, setMutedState] = useState(isMuted())
   // Conversation state — what Ruang asked and the running context to build on.
   const [question, setQuestion] = useState('')
   const [clarifyText, setClarifyText] = useState('')
@@ -55,11 +53,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
   const speechOk = isSpeechSupported()
 
-  const toggleMute = () => {
-    const next = !muted
-    setMuted(next)
-    setMutedState(next)
-  }
 
   const listen = (onFinal: (t: string) => void) => {
     setError('')
@@ -81,7 +74,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
   }
 
   const startMic = () => {
-    stopSpeaking()
     setText('')
     setPlan(null)
     listen(understand)
@@ -107,7 +99,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
         const q = `When's ${req.title ? `the ${req.title.toLowerCase()}` : 'it'} due?`
         setQuestion(q)
         setPhase('clarify')
-        speak(q)
         return
       }
       setPlanDraft({
@@ -140,14 +131,12 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
       const q = missingQuestion(a)
       setQuestion(q)
       setPhase('clarify')
-      speak(q)
       return
     }
 
     const pl = planFromAction(a, source)
     setPlan(pl)
     setPhase('propose')
-    speak(spoken(pl))
   }
 
   // The user answered a question (missing info, or a custom "something else").
@@ -186,13 +175,11 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
     const t = typed.trim()
     if (t) {
       setTyped('')
-      stopSpeaking()
       understand(t)
     }
   }
 
   const reset = () => {
-    stopSpeaking()
     setPhase('idle')
     setText('')
     setPlan(null)
@@ -229,28 +216,16 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
   // "Something else…" — the user wants to say what they'd rather do.
   const startCustom = () => {
-    stopSpeaking()
     context.current = text
     setClarifyMode('custom')
     const q = 'Sure — what would you rather do?'
     setQuestion(q)
     setClarifyText('')
     setPhase('clarify')
-    speak(q)
   }
 
   const patch = (p: Partial<Plan>) => setPlan((cur) => (cur ? { ...cur, ...p } : cur))
 
-  const muteBtn = ttsSupported() ? (
-    <button
-      className={`mute-btn ${muted ? 'off' : 'on'}`}
-      onClick={toggleMute}
-      aria-label={muted ? 'Turn voice on' : 'Turn voice off'}
-      title={muted ? 'Voice off' : 'Voice on'}
-    >
-      <SpeakerIcon muted={muted} />
-    </button>
-  ) : null
 
   if (phase === 'recording') {
     return (
@@ -279,7 +254,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
   if (phase === 'clarify') {
     return (
       <div className="clarify">
-        {muteBtn}
         <div className="clarify-q">{question}</div>
         <button className="record-btn small" onClick={() => listen(answer)} disabled={!speechOk} aria-label="Answer by voice">
           <MicIcon />
@@ -304,13 +278,12 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
 
   if (phase === 'propose' && plan) {
     return (
-      <Answer plan={plan} transcript={text} muteBtn={muteBtn} onPatch={patch} onApply={applyOption} onConfirmSimple={confirmSimple} onCustom={startCustom} onCancel={reset} />
+      <Answer plan={plan} transcript={text} onPatch={patch} onApply={applyOption} onConfirmSimple={confirmSimple} onCustom={startCustom} onCancel={reset} />
     )
   }
 
   return (
     <div className="voice-idle">
-      {muteBtn}
       <div className="voice-hero">
         <button className="record-btn" onClick={startMic} disabled={!speechOk} aria-label="Record memo">
           <MicIcon />
@@ -332,18 +305,6 @@ export function VoiceMemo({ onPlan }: { onPlan?: () => void } = {}) {
   )
 }
 
-function SpeakerIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      {muted ? (
-        <path d="M22 9l-6 6M16 9l6 6" />
-      ) : (
-        <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" />
-      )}
-    </svg>
-  )
-}
 
 function MicIcon() {
   return (
@@ -355,11 +316,10 @@ function MicIcon() {
 }
 
 function Answer({
-  plan, transcript, muteBtn, onPatch, onApply, onConfirmSimple, onCustom, onCancel,
+  plan, transcript, onPatch, onApply, onConfirmSimple, onCustom, onCancel,
 }: {
   plan: Plan
   transcript: string
-  muteBtn: ReactNode
   onPatch: (p: Partial<Plan>) => void
   onApply: (opt: ResolveOption) => void
   onConfirmSimple: () => void
@@ -372,7 +332,6 @@ function Answer({
 
   return (
     <div className="answer">
-      {muteBtn}
       {transcript && <div className="answer-quote">“{transcript}”</div>}
       <div className="answer-verdict">{verdict(plan)}</div>
       <div className="answer-source">{plan.source === 'agent' ? `via ${plan.provider ?? 'agent'}` : 'offline parser'}</div>
@@ -468,10 +427,3 @@ function verdict(plan: Plan): string {
 }
 
 // A slightly more spoken version for TTS.
-function spoken(plan: Plan): string {
-  if (plan.action === 'cancel') return `Want me to clear ${plan.title}?`
-  if (plan.action === 'move') return `Moving ${plan.title} to ${DAY_LABEL[plan.day]} ${fmt(plan.start)}?`
-  const neg = plan.negotiation!
-  if (neg.free) return `${DAY_LABEL[plan.day]} is clear. I'll add ${plan.title} at ${fmt(plan.start)}.`
-  return `${DAY_LABEL[plan.day]} ${fmt(plan.start)} clashes with ${neg.conflicts.map((c) => c.title).join(' and ')}. How do you want to handle it?`
-}

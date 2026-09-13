@@ -40,6 +40,12 @@ const MONTHS: Record<string, number> = {
 }
 const MONTH_RE = Object.keys(MONTHS).join('|')
 
+// One definition, two users (parseDeadline + parseTitle). The optional "of" is
+// why "due 20th of september" used to parse as no deadline at all, and then got
+// swallowed into the title.
+const DAY_MONTH = `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_RE})\\b`
+const MONTH_DAY = `\\b(${MONTH_RE})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`
+
 export function isPlanRequest(body: string): boolean {
   return TRIGGER.test(body)
 }
@@ -69,12 +75,12 @@ export function parseDeadline(body: string, now = new Date()): string | null {
   // "20 sep" / "sep 20"
   let dayNum: number | undefined
   let mon: number | undefined
-  let m = body.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_RE})\\b`, 'i'))
+  let m = body.match(new RegExp(DAY_MONTH, 'i'))
   if (m) {
     dayNum = parseInt(m[1]!, 10)
     mon = MONTHS[m[2]!.toLowerCase()]
   } else {
-    m = body.match(new RegExp(`\\b(${MONTH_RE})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i'))
+    m = body.match(new RegExp(MONTH_DAY, 'i'))
     if (m) {
       mon = MONTHS[m[1]!.toLowerCase()]
       dayNum = parseInt(m[2]!, 10)
@@ -134,8 +140,8 @@ export function parseTitle(body: string): string {
   const t = body
     .replace(TRIGGER, ' ')
     .replace(/\b(due|deadline|by|before|sebelum|paling lambat|dl)\b/gi, ' ')
-    .replace(new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTH_RE})\\b`, 'gi'), ' ')
-    .replace(new RegExp(`\\b(?:${MONTH_RE})\\s+\\d{1,2}(?:st|nd|rd|th)?\\b`, 'gi'), ' ')
+    .replace(new RegExp(DAY_MONTH, 'gi'), ' ')
+    .replace(new RegExp(MONTH_DAY, 'gi'), ' ')
     .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues|tue|wed|thurs|thu|fri|sat|sun|senin|senen|selasa|rabu|rebo|kamis|kemis|jumat|jum'at|sabtu|minggu|ahad)\b/gi, ' ')
     .replace(/\b(today|tonight|tomorrow|besok|esok|hari ini|malam ini)\b/gi, ' ')
     .replace(/\bin\s+\d{1,2}\s+days?\b|\b\d{1,2}\s+hari\s+lagi\b/gi, ' ')
@@ -149,6 +155,10 @@ export function parseTitle(body: string): string {
     .replace(/[,:;.!?]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+  // If what's left is a whole rambling sentence, it isn't a title — drop it so
+  // the question reads "When's it due?" instead of reciting your transcript.
+  // ponytail: length cap, swap for the LLM's title if this ever misjudges.
+  if (t.length > 60) return ''
   // "group report" reads better as "Group report" when it's quoted back at you.
   return t ? t[0]!.toUpperCase() + t.slice(1) : t
 }

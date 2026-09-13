@@ -866,7 +866,7 @@ input {
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.42;
-  color: var(--ink);
+  color: var(--ink-2); /* grayed: Ruang talking, not you */
   white-space: pre-line;
 }
 .answer-source {
@@ -1052,7 +1052,7 @@ input {
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.35;
-  color: var(--ink);
+  color: var(--ink-2); /* grayed: Ruang talking, not you */
   max-width: 300px;
 }
 .record-btn.small {
@@ -1064,33 +1064,6 @@ input {
   max-width: 320px;
 }
 
-/* Voice on/off toggle — matches the app's stroke-icon language */
-.mute-btn {
-  position: absolute;
-  top: 8px;
-  right: 4px;
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  background: var(--card);
-  transition: transform 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
-  z-index: 2;
-}
-.mute-btn.on {
-  color: var(--accent);
-  border-color: var(--accent-soft);
-  background: var(--accent-soft);
-}
-.mute-btn.off {
-  color: var(--ink-3);
-}
-.mute-btn:active {
-  transform: scale(0.92);
-}
 
 /* "Something else" custom option */
 .neg-option.custom {

@@ -101,3 +101,23 @@ describe('parseRequest', () => {
     })
   })
 })
+
+describe('spoken dates and rambling titles', () => {
+  it('reads "20th of september" as a deadline, not as part of the title', () => {
+    const r = parseRequest('plan the lab report due 20th of september', NOW)
+    expect(r.deadline).toBe('2026-09-20')
+    expect(r.title).toBe('Lab report')
+  })
+
+  it('accepts the same date however it is said', () => {
+    for (const line of ['due 20 sep', 'due sept 20', 'due 20th of september', 'due september 20th']) {
+      expect(parseDeadline(line, NOW), line).toBe('2026-09-20')
+    }
+  })
+
+  it('drops a whole transcript instead of echoing it back as a title', () => {
+    const rambling =
+      "when's the build me i have to submit task on 20th of september i want it to be out three days due"
+    expect(parseRequest(rambling, NOW).title).toBe('')
+  })
+})

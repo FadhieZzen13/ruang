@@ -10,8 +10,6 @@ export default defineConfig(({ mode }) => {
   // above if the key is missing or the call fails.
   const dsUpstream = env.DEEPSEEK_UPSTREAM || 'https://api.deepseek.com'
   const dsKey = env.DEEPSEEK_API_KEY || ''
-  // Voicebox — local TTS app (returns WAV). Proxied to dodge CORS.
-  const voicebox = env.VOICEBOX_URL || 'http://localhost:17493'
   // The Ruang bot's API. Proxied so the browser calls same-origin /bot/* —
   // "localhost" in a phone's browser is the phone, not this machine.
   const bot = env.BOT_URL || 'http://localhost:8788'
@@ -60,12 +58,6 @@ export default defineConfig(({ mode }) => {
           target: bot,
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/bot/, ''),
-        },
-        // Local Voicebox TTS (WAV audio). No key.
-        '/voicebox': {
-          target: voicebox,
-          changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/voicebox/, ''),
         },
         // Primary: DeepSeek. Key injected here, never reaches the browser.
         '/deepseek': {
